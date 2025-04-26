@@ -5,13 +5,6 @@ import { doc, getDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { MonthlyReport } from '@/types';
 
-// 年月から月次レポートのパスを取得する関数
-const getMonthlyReportPath = (year: number, month: number) => {
-  const yearDoc = `details/${year}`;
-  const monthPath = String(month).padStart(2, '0');
-  return `${yearDoc}/${monthPath}/reports`;
-};
-
 // Firestoreから特定の年月の月次レポートを取得するカスタムフック
 export const useMonthlyReport = (year: number, month: number) => {
   const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
@@ -22,38 +15,28 @@ export const useMonthlyReport = (year: number, month: number) => {
     const fetchMonthlyReport = async () => {
       try {
         setLoading(true);
+        const paddedMonth = String(month).padStart(2, '0');
         
-        // 正しいコレクション・ドキュメント構造でパスを構築
-        const yearDocRef = doc(db, `details/${year}`);
-        const monthPadded = String(month).padStart(2, '0');
-        const reportsDocRef = doc(collection(yearDocRef, monthPadded), 'reports');
-        
+        // 正しいパス構造: details/年/月/reports
         try {
+          // details/年 ドキュメント参照
+          const yearDocRef = doc(db, 'details', String(year));
+          
+          // 月コレクション内のreportsドキュメント
+          const reportsDocRef = doc(collection(yearDocRef, paddedMonth), 'reports');
+          
           const reportDoc = await getDoc(reportsDocRef);
           
           if (reportDoc.exists()) {
             setMonthlyReport(reportDoc.data() as MonthlyReport);
+            console.log(`月次レポートを取得しました: ${year}年${month}月`);
           } else {
             console.log(`月次レポートが見つかりません: ${year}年${month}月`);
             setMonthlyReport(null);
           }
-        } catch (fetchErr) {
-          console.warn('最初のパスでの取得に失敗しました、代替パスを試みます');
-          
-          // 代替パターン試行
-          try {
-            const legacyPath = getMonthlyReportPath(year, month);
-            const legacyReportDoc = await getDoc(doc(db, legacyPath));
-            
-            if (legacyReportDoc.exists()) {
-              setMonthlyReport(legacyReportDoc.data() as MonthlyReport);
-            } else {
-              setMonthlyReport(null);
-            }
-          } catch (legacyErr) {
-            console.error('代替パスでの取得にも失敗しました', legacyErr);
-            throw legacyErr;
-          }
+        } catch (err) {
+          console.error('月次レポートの取得に失敗しました:', err);
+          throw err;
         }
         
         setLoading(false);
