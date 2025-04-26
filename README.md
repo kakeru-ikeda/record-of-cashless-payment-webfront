@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RoCP Webfront - カード利用明細管理ウェブアプリケーション
 
-## Getting Started
+このアプリケーションは、[Record of Cashless Payment](https://github.com/user/record-of-cashless-payment)のWebフロントエンドです。カード利用明細をFirestoreから取得し、カレンダー形式で表示したり分析したりするための機能を提供します。
 
-First, run the development server:
+## 機能
+
+- Firebase Authenticationによるユーザー認証
+- カレンダーベースでの利用明細表示
+- 日別・週別・月別レポートの表示
+- ダッシュボードによる使用状況の可視化
+- Material UIを使用したレスポンシブなUIデザイン
+
+## 技術スタック
+
+- **フロントエンド**: React、Next.js (App Router)
+- **UI**: Material UI (MUI)
+- **認証**: Firebase Authentication
+- **データベース**: Firebase Firestore
+- **ホスティング**: Firebase App Hosting
+- **その他**: TypeScript、React Big Calendar
+
+## 前提条件
+
+- Node.js 18.0以上
+- npmまたはYarn
+- Firebaseプロジェクト（バックエンドと同じもの）
+
+## 環境構築
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/user/record-of-cashless-payment-webfront.git
+cd record-of-cashless-payment-webfront
+```
+
+### 2. 依存パッケージのインストール
+
+```bash
+npm install
+# または
+yarn install
+```
+
+### 3. 環境変数の設定
+
+`.env.local.example`をコピーして`.env.local`を作成し、Firebaseの設定値を入力します：
+
+```bash
+cp .env.local.example .env.local
+```
+
+`.env.local`ファイルを編集し、FirebaseコンソールからプロジェクトIDやAPIキーなどの必要な情報を入力します。
+
+### 4. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
+# または
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで[http://localhost:3000](http://localhost:3000)にアクセスすると、アプリケーションが表示されます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## デプロイ方法
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Firebase Hostingへのデプロイ
 
-## Learn More
+1. Firebaseツールのインストール（初回のみ）
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install -g firebase-tools
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. Firebaseへのログイン
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+firebase login
+```
 
-## Deploy on Vercel
+3. Firebaseプロジェクトの選択
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+firebase use --add
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+プロンプトが表示されたら、プロジェクトIDとエイリアス（例: production）を入力します。
+
+4. ビルドとデプロイ
+
+```bash
+npm run build
+firebase deploy --only hosting
+```
+
+デプロイが完了すると、Firebase Hostingの URL（通常は `https://your-project-id.web.app`）でアプリケーションにアクセスできます。
+
+## プロジェクト構成
+
+```
+src/
+├── app/                   # Next.js App Router
+│   ├── calendar/          # カレンダーページ 
+│   ├── dashboard/         # ダッシュボードページ
+│   ├── login/             # ログインページ
+│   ├── reports/           # レポートページ
+│   └── ...
+├── components/            # Reactコンポーネント
+│   ├── auth/              # 認証関連コンポーネント
+│   ├── dashboard/         # ダッシュボード用コンポーネント
+│   ├── layout/            # レイアウトコンポーネント
+│   └── ui/                # 共通UIコンポーネント
+├── contexts/              # Reactコンテキスト
+├── hooks/                 # カスタムフック
+├── lib/                   # ユーティリティライブラリ
+│   └── firebase/          # Firebase関連
+├── types/                 # 型定義
+└── utils/                 # ユーティリティ関数
+```
+
+## バックエンドとの連携
+
+このWebフロントエンドは、`record-of-cashless-payment`バックエンドプロジェクトとFirebase Firestoreを通じて連携します。バックエンドがメールから受信した利用明細データはFirestoreに保存され、このWebフロントエンドアプリケーションでそのデータを表示・分析します。
+
+## 注意事項
+
+- このアプリケーションは、同じFirebaseプロジェクトを使用しているバックエンドプロジェクトとともに使用することを想定しています
+- 認証は特定のユーザーのみに制限されているため、Firebaseコンソールでのユーザー登録が必要です
