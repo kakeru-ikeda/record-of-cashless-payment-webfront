@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "release": "mufg-usage-details-mailbot",
+    "default": "mufg-usage-details-mailbot"
+  },
+  "targets": {},
+  "etags": {}
+}
