@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     Box,
     Paper,
@@ -19,13 +19,19 @@ import {
     Divider,
     List,
     Card,
-    CardContent
+    CardContent,
+    ToggleButtonGroup,
+    ToggleButton
 } from '@mui/material';
 import {
     ChevronLeft as ChevronLeftIcon,
     ChevronRight as ChevronRightIcon,
+    CalendarViewMonth as CalendarViewMonthIcon,
+    ViewWeek as ViewWeekIcon,
+    ViewDay as ViewDayIcon,
+    Today as TodayIcon
 } from '@mui/icons-material';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
+import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ja';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -40,13 +46,26 @@ const localizer = momentLocalizer(moment);
 
 export default function CalendarPage() {
     const today = new Date();
+    const [currentDate, setCurrentDate] = useState<Date>(today);
     const [year, setYear] = useState<number>(today.getFullYear());
     const [month, setMonth] = useState<number>(today.getMonth() + 1);
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+    const [view, setView] = useState<View>('month');
 
     // カレンダーの日付範囲に基づいてデータを取得
     const { events, cardUsages, loading, error } = useCardUsages(year, month);
+
+    // ビュー切替時に現在の日付に移動
+    useEffect(() => {
+        updateDateByView(currentDate);
+    }, [view]);
+
+    // currentDateが変更された時にyearとmonthも更新
+    useEffect(() => {
+        setYear(currentDate.getFullYear());
+        setMonth(currentDate.getMonth() + 1);
+    }, [currentDate]);
 
     // 月次集計データ
     const monthSummary = useMemo(() => {
@@ -85,30 +104,89 @@ export default function CalendarPage() {
         return Object.values(summary).sort((a, b) => a.date.getTime() - b.date.getTime());
     }, [cardUsages]);
 
-    // 前の月へ
-    const handlePreviousMonth = () => {
-        if (month === 1) {
-            setYear(year - 1);
-            setMonth(12);
+    // カレンダーのナビゲーション処理（前へ、次へ）
+    const handleNavigation = (action: 'PREV' | 'NEXT' | 'TODAY') => {
+        let newDate = new Date(currentDate);
+
+        if (action === 'TODAY') {
+            newDate = new Date();
         } else {
-            setMonth(month - 1);
+            switch (view) {
+                case 'month':
+                    if (action === 'PREV') {
+                        newDate.setMonth(newDate.getMonth() - 1);
+                    } else {
+                        newDate.setMonth(newDate.getMonth() + 1);
+                    }
+                    break;
+                case 'week':
+                    if (action === 'PREV') {
+                        newDate.setDate(newDate.getDate() - 7);
+                    } else {
+                        newDate.setDate(newDate.getDate() + 7);
+                    }
+                    break;
+                case 'day':
+                    if (action === 'PREV') {
+                        newDate.setDate(newDate.getDate() - 1);
+                    } else {
+                        newDate.setDate(newDate.getDate() + 1);
+                    }
+                    break;
+            }
+        }
+
+        setCurrentDate(newDate);
+        updateDateByView(newDate);
+    };
+
+    // 指定された日付に基づいてカレンダーの表示を更新
+    const updateDateByView = (date: Date) => {
+        setYear(date.getFullYear());
+        setMonth(date.getMonth() + 1);
+    };
+
+    // カレンダービューの切り替え
+    const handleViewChange = (event: React.MouseEvent<HTMLElement>, newView: View | null) => {
+        if (newView) {
+            setView(newView);
         }
     };
 
-    // 次の月へ
-    const handleNextMonth = () => {
-        if (month === 12) {
-            setYear(year + 1);
-            setMonth(1);
-        } else {
-            setMonth(month + 1);
+    // タイトル表示用のフォーマット
+    const formatTitleDate = () => {
+        const date = currentDate;
+        switch (view) {
+            case 'month':
+                return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+            case 'week':
+                const startOfWeek = new Date(date);
+                startOfWeek.setDate(date.getDate() - date.getDay());
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+                if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
+                    return `${startOfWeek.getFullYear()}年${startOfWeek.getMonth() + 1}月${startOfWeek.getDate()}日〜${endOfWeek.getDate()}日`;
+                } else if (startOfWeek.getFullYear() === endOfWeek.getFullYear()) {
+                    return `${startOfWeek.getFullYear()}年${startOfWeek.getMonth() + 1}月${startOfWeek.getDate()}日〜${endOfWeek.getMonth() + 1}月${endOfWeek.getDate()}日`;
+                } else {
+                    return `${startOfWeek.getFullYear()}年${startOfWeek.getMonth() + 1}月${startOfWeek.getDate()}日〜${endOfWeek.getFullYear()}年${endOfWeek.getMonth() + 1}月${endOfWeek.getDate()}日`;
+                }
+            case 'day':
+                return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+            default:
+                return `${date.getFullYear()}年${date.getMonth() + 1}月`;
         }
     };
 
-    // 今月へ
-    const handleCurrentMonth = () => {
-        setYear(today.getFullYear());
-        setMonth(today.getMonth() + 1);
+    // 日付のフォーマット
+    const formatDate = (date: Date) => {
+        return new Intl.DateTimeFormat('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            weekday: 'short',
+        }).format(date);
     };
 
     // イベントクリック時のハンドラー
@@ -122,30 +200,19 @@ export default function CalendarPage() {
         setDialogOpen(false);
     };
 
-    // 日付のフォーマット
-    const formatDate = (date: Date) => {
-        return new Intl.DateTimeFormat('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            weekday: 'short',
-        }).format(date);
-    };
-
     // カレンダーのイベントのスタイル
     const eventStyleGetter = (event: CalendarEvent) => {
         const amount = event.amount;
-        let backgroundColor = '#3174ad'; // デフォルト色
+        let backgroundColor = '#3174ad';
 
-        // 金額に応じて色を変更
         if (amount < 1000) {
-            backgroundColor = '#4caf50'; // 緑 (少額)
+            backgroundColor = '#4caf50';
         } else if (amount < 3000) {
-            backgroundColor = '#2196f3'; // 青 (中程度)
+            backgroundColor = '#2196f3';
         } else if (amount < 10000) {
-            backgroundColor = '#ff9800'; // オレンジ (高額)
+            backgroundColor = '#ff9800';
         } else {
-            backgroundColor = '#f44336'; // 赤 (非常に高額)
+            backgroundColor = '#f44336';
         }
 
         return {
@@ -166,23 +233,28 @@ export default function CalendarPage() {
                 <Box sx={{ flexGrow: 1 }}>
                     <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
                         <Grid size={1}>
-                            <IconButton onClick={handlePreviousMonth} color="primary">
+                            <IconButton onClick={() => handleNavigation('PREV')} color="primary">
                                 <ChevronLeftIcon />
                             </IconButton>
                         </Grid>
-                        <Grid size={3}>
+                        <Grid size={4}>
                             <Typography variant="h5" component="h1">
-                                {year}年{month}月
+                                {formatTitleDate()}
                             </Typography>
                         </Grid>
                         <Grid size={1}>
-                            <IconButton onClick={handleNextMonth} color="primary">
+                            <IconButton onClick={() => handleNavigation('NEXT')} color="primary">
                                 <ChevronRightIcon />
                             </IconButton>
                         </Grid>
                         <Grid size={2}>
-                            <Button variant="outlined" size="small" onClick={handleCurrentMonth}>
-                                今月
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleNavigation('TODAY')}
+                                startIcon={<TodayIcon />}
+                            >
+                                今日
                             </Button>
                         </Grid>
                         <Grid size="grow" />
@@ -192,6 +264,30 @@ export default function CalendarPage() {
                             </Typography>
                         </Grid>
                     </Grid>
+
+                    {/* ビュー切替ボタン */}
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                        <ToggleButtonGroup
+                            value={view}
+                            exclusive
+                            onChange={handleViewChange}
+                            aria-label="カレンダービュー"
+                            size="small"
+                        >
+                            <ToggleButton value="month" aria-label="月表示">
+                                <CalendarViewMonthIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                月
+                            </ToggleButton>
+                            <ToggleButton value="week" aria-label="週表示">
+                                <ViewWeekIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                週
+                            </ToggleButton>
+                            <ToggleButton value="day" aria-label="日表示">
+                                <ViewDayIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                日
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
 
                     {error && (
                         <Alert severity="error" sx={{ mb: 3 }}>
@@ -223,9 +319,10 @@ export default function CalendarPage() {
                                         endAccessor="end"
                                         style={{ height: '100%' }}
                                         views={['month', 'week', 'day']}
-                                        defaultView='month'
-                                        date={new Date(year, month - 1, 1)}
-                                        onNavigate={() => { }}
+                                        view={view}
+                                        onView={setView}
+                                        date={currentDate}
+                                        onNavigate={(date) => setCurrentDate(date)}
                                         onSelectEvent={(event) => handleEventClick(event as CalendarEvent)}
                                         eventPropGetter={eventStyleGetter}
                                         messages={{
