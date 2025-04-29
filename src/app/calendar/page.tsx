@@ -8,7 +8,6 @@ import {
     CircularProgress,
     Alert,
     Grid,
-    IconButton,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -20,17 +19,9 @@ import {
     List,
     Card,
     CardContent,
-    ToggleButtonGroup,
-    ToggleButton,
     Chip
 } from '@mui/material';
 import {
-    ChevronLeft as ChevronLeftIcon,
-    ChevronRight as ChevronRightIcon,
-    CalendarViewMonth as CalendarViewMonthIcon,
-    ViewWeek as ViewWeekIcon,
-    ViewDay as ViewDayIcon,
-    Today as TodayIcon,
     Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
