@@ -107,15 +107,15 @@ src/
 │   └── ...
 ├── components/            # Reactコンポーネント
 │   ├── auth/              # 認証関連コンポーネント
-│   ├── dashboard/         # ダッシュボード用コンポーネント
-│   ├── layout/            # レイアウトコンポーネント
-│   └── ui/                # 共通UIコンポーネント
+│   └── layout/            # レイアウトコンポーネント
 ├── contexts/              # Reactコンテキスト
-├── hooks/                 # カスタムフック
+│   ├── AuthContext.tsx    # 認証コンテキスト
+│   └── ThemeContext.tsx   # テーマコンテキスト
+├── hooks/                 # カスタムフック（将来追加予定）
 ├── lib/                   # ユーティリティライブラリ
 │   └── firebase/          # Firebase関連
 ├── types/                 # 型定義
-└── utils/                 # ユーティリティ関数
+└── utils/                 # ユーティリティ関数（将来追加予定）
 ```
 
 ## バックエンドとの連携
