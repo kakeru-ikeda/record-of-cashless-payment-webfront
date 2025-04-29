@@ -194,12 +194,21 @@ export const useCardUsages = (year: number, month: number) => {
                 // カレンダー表示用のイベントデータを作成
                 const calendarEvents = sortedUsages.map(usage => {
                     const date = usage.datetime_of_use.toDate();
+                    
+                    // 時刻を含む開始・終了時間を設定
+                    const startTime = new Date(date);
+                    
+                    // デフォルトでは終了時間を開始時間の30分後に設定
+                    // これにより日・週ビューで適切な時間枠で表示される
+                    const endTime = new Date(date);
+                    endTime.setMinutes(endTime.getMinutes() + 30);
+                    
                     return {
                         id: usage.id || date.getTime().toString(),
                         title: `${usage.amount}円 - ${usage.where_to_use}`,
-                        start: date,
-                        end: date,
-                        allDay: true,
+                        start: startTime,
+                        end: endTime,
+                        allDay: false, // 終日イベントではなく、時間指定イベントとして扱う
                         amount: usage.amount,
                         where: usage.where_to_use,
                         cardName: usage.card_name

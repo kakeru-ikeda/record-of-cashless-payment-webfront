@@ -21,7 +21,8 @@ import {
     Card,
     CardContent,
     ToggleButtonGroup,
-    ToggleButton
+    ToggleButton,
+    Chip
 } from '@mui/material';
 import {
     ChevronLeft as ChevronLeftIcon,
@@ -29,7 +30,8 @@ import {
     CalendarViewMonth as CalendarViewMonthIcon,
     ViewWeek as ViewWeekIcon,
     ViewDay as ViewDayIcon,
-    Today as TodayIcon
+    Today as TodayIcon,
+    Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
@@ -189,6 +191,26 @@ export default function CalendarPage() {
         }).format(date);
     };
 
+    // 日時のフォーマット（時刻を含む）
+    const formatDateTime = (date: Date) => {
+        return new Intl.DateTimeFormat('ja-JP', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            weekday: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(date);
+    };
+
+    // 時刻のみのフォーマット
+    const formatTime = (date: Date) => {
+        return new Intl.DateTimeFormat('ja-JP', {
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(date);
+    };
+
     // イベントクリック時のハンドラー
     const handleEventClick = (event: CalendarEvent) => {
         setSelectedEvent(event);
@@ -225,6 +247,32 @@ export default function CalendarPage() {
                 display: 'block'
             }
         };
+    };
+
+    // ビューに応じてイベント表示を調整するためのカスタムコンポーネント
+    const EventComponent = ({ event }: { event: CalendarEvent }) => {
+        if (view === 'month') {
+            return (
+                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    ¥{event.amount.toLocaleString()} - {event.where}
+                </div>
+            );
+        }
+
+        // 週表示・日表示の場合
+        return (
+            <div style={{ padding: '0 4px' }}>
+                <strong>¥{event.amount.toLocaleString()}</strong>
+                <div style={{ fontSize: '0.85em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {event.where}
+                </div>
+            </div>
+        );
+    };
+
+    // ビューに応じてイベントの表示形式を変更
+    const components = {
+        event: EventComponent,
     };
 
     return (
@@ -325,6 +373,29 @@ export default function CalendarPage() {
                                         onNavigate={(date) => setCurrentDate(date)}
                                         onSelectEvent={(event) => handleEventClick(event as CalendarEvent)}
                                         eventPropGetter={eventStyleGetter}
+                                        components={components}
+                                        // 月表示では終日イベントとして扱う
+                                        dayPropGetter={(date) => {
+                                            const today = new Date();
+                                            return {
+                                                className: date.getDate() === today.getDate() && 
+                                                        date.getMonth() === today.getMonth() && 
+                                                        date.getFullYear() === today.getFullYear() 
+                                                    ? 'rbc-today' 
+                                                    : undefined,
+                                                style: {
+                                                    backgroundColor: undefined
+                                                }
+                                            };
+                                        }}
+                                        // 月表示では終日イベントとして扱い、週・日表示では時刻を考慮
+                                        defaultView={view}
+                                        popup={view === 'month'}
+                                        showMultiDayTimes={view !== 'month'}
+                                        step={30}
+                                        timeslots={2}
+                                        min={new Date(0, 0, 0, 6, 0)} // 6:00 AM
+                                        max={new Date(0, 0, 0, 23, 59)} // 11:59 PM
                                         messages={{
                                             today: '今日',
                                             previous: '前へ',
@@ -394,9 +465,18 @@ export default function CalendarPage() {
                                         <Typography variant="subtitle1" color="text.secondary">
                                             利用日時
                                         </Typography>
-                                        <Typography variant="body1" gutterBottom>
-                                            {formatDate(selectedEvent.start)}
-                                        </Typography>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <Typography variant="body1" gutterBottom>
+                                                {formatDate(selectedEvent.start)}
+                                            </Typography>
+                                            <Chip 
+                                                icon={<ScheduleIcon fontSize="small" />}
+                                                label={formatTime(selectedEvent.start)}
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                            />
+                                        </Box>
 
                                         <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
                                             利用金額
