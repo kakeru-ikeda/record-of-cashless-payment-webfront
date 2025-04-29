@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, doc, getDocs, query, getDoc, where, documentId } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { CardUsage, CalendarEvent } from '@/types';
 
@@ -49,7 +49,7 @@ export const useCardUsages = (year: number, month: number) => {
                                         const parts: string[] = docId.split('/').filter((part: string) => part !== '');
 
                                         if (parts.length >= 6) {
-                                            const [DETAILS, docYear, docMonth, docTerm, docDay, docTimestamp] = parts;
+                                            const [, docYear, docMonth, docTerm, docDay, docTimestamp] = parts;
                                             const docRef = doc(db, 'details', docYear, docMonth, docTerm, docDay, docTimestamp);
                                             const docSnap = await getDoc(docRef);
 
@@ -194,15 +194,15 @@ export const useCardUsages = (year: number, month: number) => {
                 // カレンダー表示用のイベントデータを作成
                 const calendarEvents = sortedUsages.map(usage => {
                     const date = usage.datetime_of_use.toDate();
-                    
+
                     // 時刻を含む開始・終了時間を設定
                     const startTime = new Date(date);
-                    
+
                     // デフォルトでは終了時間を開始時間の30分後に設定
                     // これにより日・週ビューで適切な時間枠で表示される
                     const endTime = new Date(date);
                     endTime.setMinutes(endTime.getMinutes() + 30);
-                    
+
                     return {
                         id: usage.id || date.getTime().toString(),
                         title: `${usage.amount}円 - ${usage.where_to_use}`,

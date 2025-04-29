@@ -12,12 +12,8 @@ import {
     Button,
     Tabs,
     Tab,
-    Divider,
     Card,
     CardContent,
-    List,
-    ListItem,
-    ListItemText,
     TableContainer,
     Table,
     TableHead,
@@ -37,7 +33,6 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
 import { useAllWeeklyReports } from '@/hooks/useWeeklyReports';
-import { WeeklyReport } from '@/types';
 
 interface TabPanelProps {
     children?: React.ReactNode;
