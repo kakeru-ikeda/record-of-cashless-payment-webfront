@@ -36,6 +36,8 @@ import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
+import { useAllWeeklyReports } from '@/hooks/useWeeklyReports';
+import { WeeklyReport } from '@/types';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -68,10 +70,11 @@ export default function ReportsPage() {
     const [tabValue, setTabValue] = useState<number>(0);
 
     const { cardUsages, loading: usagesLoading, error: usagesError } = useCardUsages(year, month);
-    const { monthlyReport, loading: reportLoading, error: reportError } = useMonthlyReport(year, month);
+    const { monthlyReport, loading: monthlyReportLoading, error: monthlyReportError } = useMonthlyReport(year, month);
+    const { weeklyReports, loading: weeklyReportsLoading, error: weeklyReportsError } = useAllWeeklyReports(year, month);
 
-    const loading = usagesLoading || reportLoading;
-    const error = usagesError || reportError;
+    const loading = usagesLoading || monthlyReportLoading || weeklyReportsLoading;
+    const error = usagesError || monthlyReportError || weeklyReportsError;
 
     // 前の月へ
     const handlePreviousMonth = () => {
@@ -106,7 +109,23 @@ export default function ReportsPage() {
 
     // 週ごとの集計データ
     const weeklyData = useMemo(() => {
-        // 週番号（term1～term5）ごとにデータをグループ化
+        // バックエンドから取得した週次レポートがある場合はそれを優先
+        if (Object.keys(weeklyReports).length > 0) {
+            return Object.entries(weeklyReports)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([term, data]) => ({
+                    term,
+                    termName: term.replace('term', '第') + '週',
+                    total: data.totalAmount,
+                    count: data.totalCount,
+                    // その他のレポート情報も含める
+                    startDate: data.termStartDate?.toDate(),
+                    endDate: data.termEndDate?.toDate(),
+                    hasReportSent: data.hasReportSent,
+                }));
+        }
+
+        // バックエンドからの週次レポートがない場合は、cardUsagesからフロントエンドで集計
         const weekMap: Record<string, { total: number, count: number, items: any[] }> = {};
 
         cardUsages.forEach(usage => {
@@ -137,7 +156,7 @@ export default function ReportsPage() {
                 termName: term.replace('term', '第') + '週',
                 ...data
             }));
-    }, [cardUsages]);
+    }, [cardUsages, weeklyReports]);
 
     // カテゴリ別集計（ここでは店舗ごと）
     const categoryData = useMemo(() => {
@@ -164,9 +183,16 @@ export default function ReportsPage() {
             }));
     }, [cardUsages]);
 
-    // 月間合計
-    const monthTotal = cardUsages.reduce((sum, usage) => sum + usage.amount, 0);
-    const transactionCount = cardUsages.length;
+    // 月間合計 - monthlyReportがある場合はそれを使用、ない場合はcardUsagesから計算
+    const monthTotal = monthlyReport
+        ? monthlyReport.totalAmount
+        : cardUsages.reduce((sum, usage) => sum + usage.amount, 0);
+
+    // 取引件数 - monthlyReportがある場合はそれを使用、ない場合はcardUsagesから計算
+    const transactionCount = monthlyReport
+        ? monthlyReport.totalCount
+        : cardUsages.length;
+
     const averagePerTransaction = transactionCount > 0 ? Math.round(monthTotal / transactionCount) : 0;
 
     // 日付のフォーマット
