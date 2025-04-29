@@ -121,6 +121,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         width: drawerWidth,
                         boxSizing: 'border-box',
                     },
+                    '&.MuiDrawer-docked': {
+                        width: 50,
+                    },
                 }}
             >
                 <Toolbar />
