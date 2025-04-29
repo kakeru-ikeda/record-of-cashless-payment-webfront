@@ -278,63 +278,19 @@ export default function CalendarPage() {
         <ProtectedRoute>
             <MainLayout>
                 <Box sx={{ flexGrow: 1 }}>
-                    <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                        <Grid size={1}>
-                            <IconButton onClick={() => handleNavigation('PREV')} color="primary">
-                                <ChevronLeftIcon />
-                            </IconButton>
-                        </Grid>
+                    <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
                         <Grid size={4}>
-                            <Typography variant="h5" component="h1">
+                            <Typography variant="h4" component="h1">
                                 {formatTitleDate()}
                             </Typography>
                         </Grid>
-                        <Grid size={1}>
-                            <IconButton onClick={() => handleNavigation('NEXT')} color="primary">
-                                <ChevronRightIcon />
-                            </IconButton>
-                        </Grid>
-                        <Grid size={2}>
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                onClick={() => handleNavigation('TODAY')}
-                                startIcon={<TodayIcon />}
-                            >
-                                今日
-                            </Button>
-                        </Grid>
                         <Grid size="grow" />
-                        <Grid size={4}>
-                            <Typography variant="body1">
-                                合計: ¥{monthSummary.total.toLocaleString()} ({monthSummary.count}件)
-                            </Typography>
-                        </Grid>
                     </Grid>
-
-                    {/* ビュー切替ボタン */}
-                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                        <ToggleButtonGroup
-                            value={view}
-                            exclusive
-                            onChange={handleViewChange}
-                            aria-label="カレンダービュー"
-                            size="small"
-                        >
-                            <ToggleButton value="month" aria-label="月表示">
-                                <CalendarViewMonthIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                月
-                            </ToggleButton>
-                            <ToggleButton value="week" aria-label="週表示">
-                                <ViewWeekIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                週
-                            </ToggleButton>
-                            <ToggleButton value="day" aria-label="日表示">
-                                <ViewDayIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                日
-                            </ToggleButton>
-                        </ToggleButtonGroup>
-                    </Box>
+                    <Grid container spacing={2} size={4} sx={{ mb: 1 }}>
+                        <Typography variant="h6" gutterBottom>
+                            合計: ¥{monthSummary.total.toLocaleString()} ({monthSummary.count}件)
+                        </Typography>
+                    </Grid>
 
                     {error && (
                         <Alert severity="error" sx={{ mb: 3 }}>
