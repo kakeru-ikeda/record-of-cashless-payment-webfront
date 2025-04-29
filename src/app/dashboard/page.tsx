@@ -15,14 +15,15 @@ import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
+import { Timestamp } from 'firebase/firestore';
 
 export default function DashboardPage() {
     const today = new Date();
-    const [year, setYear] = useState<number>(today.getFullYear());
-    const [month, setMonth] = useState<number>(today.getMonth() + 1);
+    const [year] = useState<number>(today.getFullYear());
+    const [month] = useState<number>(today.getMonth() + 1);
 
-    const { cardUsages, events, loading: usagesLoading } = useCardUsages(year, month);
-    const { monthlyReport, loading: reportLoading } = useMonthlyReport(year, month);
+    const { cardUsages, loading: usagesLoading } = useCardUsages(year, month);
+    const { loading: reportLoading } = useMonthlyReport(year, month);
 
     // 直近5件の利用履歴を取得
     const recentTransactions = [...cardUsages]
@@ -48,7 +49,7 @@ export default function DashboardPage() {
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 5);
 
-    const formatDate = (timestamp: any) => {
+    const formatDate = (timestamp: Timestamp) => {
         if (!timestamp) return '—';
         const date = timestamp.toDate();
         return new Intl.DateTimeFormat('ja-JP', {

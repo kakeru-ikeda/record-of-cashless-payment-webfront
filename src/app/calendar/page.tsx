@@ -52,7 +52,7 @@ export default function CalendarPage() {
     // ビュー切替時に現在の日付に移動
     useEffect(() => {
         updateDateByView(currentDate);
-    }, [view]);
+    }, [view, currentDate]);
 
     // currentDateが変更された時にyearとmonthも更新
     useEffect(() => {
@@ -139,13 +139,6 @@ export default function CalendarPage() {
         setMonth(date.getMonth() + 1);
     };
 
-    // カレンダービューの切り替え
-    const handleViewChange = (event: React.MouseEvent<HTMLElement>, newView: View | null) => {
-        if (newView) {
-            setView(newView);
-        }
-    };
-
     // タイトル表示用のフォーマット
     const formatTitleDate = () => {
         const date = currentDate;
@@ -179,18 +172,6 @@ export default function CalendarPage() {
             month: '2-digit',
             day: '2-digit',
             weekday: 'short',
-        }).format(date);
-    };
-
-    // 日時のフォーマット（時刻を含む）
-    const formatDateTime = (date: Date) => {
-        return new Intl.DateTimeFormat('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            weekday: 'short',
-            hour: '2-digit',
-            minute: '2-digit'
         }).format(date);
     };
 

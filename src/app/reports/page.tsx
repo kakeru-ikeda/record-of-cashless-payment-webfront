@@ -40,6 +40,13 @@ interface TabPanelProps {
     value: number;
 }
 
+interface CardUsage {
+    datetime_of_use: { toDate: () => Date };
+    where_to_use: string;
+    card_name: string;
+    amount: number;
+}
+
 // タブパネルコンポーネント
 function TabPanel(props: TabPanelProps) {
     const { children, value, index, ...other } = props;
@@ -121,7 +128,7 @@ export default function ReportsPage() {
         }
 
         // バックエンドからの週次レポートがない場合は、cardUsagesからフロントエンドで集計
-        const weekMap: Record<string, { total: number, count: number, items: any[] }> = {};
+        const weekMap: Record<string, { total: number, count: number, items: CardUsage[] }> = {};
 
         cardUsages.forEach(usage => {
             const dateObj = usage.datetime_of_use.toDate();
