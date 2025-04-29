@@ -97,42 +97,6 @@ export default function CalendarPage() {
         return Object.values(summary).sort((a, b) => a.date.getTime() - b.date.getTime());
     }, [cardUsages]);
 
-    // カレンダーのナビゲーション処理（前へ、次へ）
-    const handleNavigation = (action: 'PREV' | 'NEXT' | 'TODAY') => {
-        let newDate = new Date(currentDate);
-
-        if (action === 'TODAY') {
-            newDate = new Date();
-        } else {
-            switch (view) {
-                case 'month':
-                    if (action === 'PREV') {
-                        newDate.setMonth(newDate.getMonth() - 1);
-                    } else {
-                        newDate.setMonth(newDate.getMonth() + 1);
-                    }
-                    break;
-                case 'week':
-                    if (action === 'PREV') {
-                        newDate.setDate(newDate.getDate() - 7);
-                    } else {
-                        newDate.setDate(newDate.getDate() + 7);
-                    }
-                    break;
-                case 'day':
-                    if (action === 'PREV') {
-                        newDate.setDate(newDate.getDate() - 1);
-                    } else {
-                        newDate.setDate(newDate.getDate() + 1);
-                    }
-                    break;
-            }
-        }
-
-        setCurrentDate(newDate);
-        updateDateByView(newDate);
-    };
-
     // 指定された日付に基づいてカレンダーの表示を更新
     const updateDateByView = (date: Date) => {
         setYear(date.getFullYear());
