@@ -259,12 +259,11 @@ export default function CalendarPage() {
             );
         }
 
-        // 週表示・日表示の場合
+        // 週表示・日表示の場合は利用店舗名を主に表示
         return (
             <div style={{ padding: '0 4px' }}>
-                <strong>¥{event.amount.toLocaleString()}</strong>
-                <div style={{ fontSize: '0.85em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {event.where}
+                <div style={{ fontWeight: '0.85em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    ¥{event.amount.toLocaleString()} - {event.where}
                 </div>
             </div>
         );
@@ -365,6 +364,7 @@ export default function CalendarPage() {
                                         events={events}
                                         startAccessor="start"
                                         endAccessor="end"
+                                        titleAccessor={(event) => `¥${event.amount.toLocaleString()} - ${event.where}`} // タイトルとして店舗名を使用
                                         style={{ height: '100%' }}
                                         views={['month', 'week', 'day']}
                                         view={view}
@@ -374,14 +374,26 @@ export default function CalendarPage() {
                                         onSelectEvent={(event) => handleEventClick(event as CalendarEvent)}
                                         eventPropGetter={eventStyleGetter}
                                         components={components}
+                                        // フォーマット設定：時間表示のカスタマイズ
+                                        formats={{
+                                            // 週・日表示での時間表示を無効化（店舗名のみ表示）
+                                            eventTimeRangeFormat: () => '',
+                                            eventTimeRangeStartFormat: () => '',
+                                            eventTimeRangeEndFormat: () => '',
+                                            // その他の標準フォーマット
+                                            dayHeaderFormat: (date) =>
+                                                localizer.format(date, 'dddd MMM DD'),
+                                            dayRangeHeaderFormat: ({ start, end }) =>
+                                                `${localizer.format(start, 'MMM DD')} – ${localizer.format(end, 'MMM DD')}`,
+                                        }}
                                         // 月表示では終日イベントとして扱う
                                         dayPropGetter={(date) => {
                                             const today = new Date();
                                             return {
-                                                className: date.getDate() === today.getDate() && 
-                                                        date.getMonth() === today.getMonth() && 
-                                                        date.getFullYear() === today.getFullYear() 
-                                                    ? 'rbc-today' 
+                                                className: date.getDate() === today.getDate() &&
+                                                    date.getMonth() === today.getMonth() &&
+                                                    date.getFullYear() === today.getFullYear()
+                                                    ? 'rbc-today'
                                                     : undefined,
                                                 style: {
                                                     backgroundColor: undefined
@@ -394,7 +406,7 @@ export default function CalendarPage() {
                                         showMultiDayTimes={view !== 'month'}
                                         step={30}
                                         timeslots={2}
-                                        min={new Date(0, 0, 0, 6, 0)} // 6:00 AM
+                                        min={new Date(0, 0, 0, 0, 0)} // 0:00 AM
                                         max={new Date(0, 0, 0, 23, 59)} // 11:59 PM
                                         messages={{
                                             today: '今日',
@@ -469,7 +481,7 @@ export default function CalendarPage() {
                                             <Typography variant="body1" gutterBottom>
                                                 {formatDate(selectedEvent.start)}
                                             </Typography>
-                                            <Chip 
+                                            <Chip
                                                 icon={<ScheduleIcon fontSize="small" />}
                                                 label={formatTime(selectedEvent.start)}
                                                 size="small"
