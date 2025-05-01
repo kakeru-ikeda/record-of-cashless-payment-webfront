@@ -1,0 +1,77 @@
+/* react-big-calendar モバイル向けカスタムスタイル */
+
+/* 全体のコンテナをモバイルに最適化 */
+@media (max-width: 767px) {
+
+    /* ヘッダーボタンを小さくしてスペースを節約 */
+    .rbc-toolbar button {
+        padding: 5px 8px;
+        font-size: 0.8rem;
+    }
+
+    /* ヘッダーをよりコンパクトに */
+    .rbc-toolbar {
+        margin-bottom: 8px;
+        padding: 5px 0;
+    }
+
+    /* 月表示のセル高さをコンパクトに */
+    .rbc-month-view .rbc-month-row {
+        min-height: 60px;
+        /* セルの高さを小さく */
+    }
+
+    /* 月表示の日付ヘッダーを小さく */
+    .rbc-header {
+        padding: 3px 2px;
+        font-size: 0.8rem;
+        overflow: hidden;
+    }
+
+    /* 日付を小さく表示 */
+    .rbc-date-cell {
+        padding: 2px;
+        font-size: 0.8rem;
+    }
+
+    /* イベント表示をコンパクトに */
+    .rbc-event {
+        padding: 1px 2px;
+        min-height: 16px;
+        font-size: 0.7rem;
+        margin-bottom: 1px;
+    }
+
+    /* showMoreリンクを小さく */
+    .rbc-show-more {
+        font-size: 0.7rem;
+        padding: 0;
+        margin-top: 1px;
+    }
+
+    /* 月表示のセル内のスペースを最適化 */
+    .rbc-row-segment {
+        padding: 0;
+    }
+
+    /* 日表示・週表示のヘッダー高さを小さく */
+    .rbc-time-header-content {
+        min-height: auto;
+    }
+
+    /* イベントの余白を最小化 */
+    .rbc-row-content {
+        margin-right: 1px;
+    }
+
+    /* "今日"のハイライト色を調整 */
+    .rbc-today {
+        background-color: rgba(240, 240, 255, 0.7);
+    }
+
+    /* 終日イベント表示の高さを調整 */
+    .rbc-allday-cell {
+        height: auto;
+        max-height: 30px;
+    }
+}

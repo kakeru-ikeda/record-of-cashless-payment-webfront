@@ -28,6 +28,7 @@ import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ja';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import '@/styles/calendar-responsive.css'; // カスタムレスポンシブスタイル
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
@@ -188,6 +189,26 @@ export default function CalendarPage() {
     // ビューに応じてイベント表示を調整するためのカスタムコンポーネント
     const EventComponent = ({ event }: { event: CalendarEvent }) => {
         if (view === 'month') {
+            // スマートフォン表示の場合はより簡潔な表示にする
+            const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+            if (isMobile) {
+                // モバイル向けにより簡潔な表示
+                return (
+                    <div style={{
+                        fontSize: '0.75rem',
+                        padding: '1px',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}>
+                        ¥{event.amount.toLocaleString()}
+                    </div>
+                );
+            }
+
+            // PC向け表示（元のまま）
             return (
                 <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     ¥{event.amount.toLocaleString()} - {event.where}
@@ -204,6 +225,17 @@ export default function CalendarPage() {
             </div>
         );
     };
+
+    // ウィンドウサイズの変更を検知して再レンダリング
+    useEffect(() => {
+        const handleResize = () => {
+            // 強制的に再レンダリングを行う
+            setView(currentView => currentView);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // ビューに応じてイベントの表示形式を変更
     const components = {
