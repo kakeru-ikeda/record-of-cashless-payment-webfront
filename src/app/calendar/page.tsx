@@ -19,10 +19,19 @@ import {
     List,
     Card,
     CardContent,
-    Chip
+    Chip,
+    TextField,
+    Snackbar,
+    FormControlLabel,
+    Switch,
+    Tooltip,
 } from '@mui/material';
 import {
-    Schedule as ScheduleIcon
+    Schedule as ScheduleIcon,
+    Edit as EditIcon,
+    Save as SaveIcon,
+    Cancel as CancelIcon,
+    Add as AddIcon,
 } from '@mui/icons-material';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
@@ -33,7 +42,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { CalendarEvent } from '@/types';
+import { CardUsageApi } from '@/api/cardUsageApi';
 import { convertTimestampToDate, formatDate, formatTime, formatSimpleDate } from '@/utils/dateUtils';
+import AddCardUsageModal from '@/components/ui/AddCardUsageModal';
 
 // カレンダーの日本語化
 moment.locale('ja');
@@ -47,9 +58,24 @@ export default function CalendarPage() {
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const [view, setView] = useState<View>('month');
+    // 編集モードの状態
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [editFormValues, setEditFormValues] = useState({
+        amount: 0,
+        where: '',
+        cardName: '',
+        memo: '',
+        isActive: true,
+    });
+    const [isSaving, setIsSaving] = useState<boolean>(false);
+    const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+    const [snackbarMessage, setSnackbarMessage] = useState<string>('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+    // 新規明細追加モーダル用のステート
+    const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
 
     // カレンダーの日付範囲に基づいてデータを取得
-    const { events, cardUsages, loading, error } = useCardUsages(year, month);
+    const { events, cardUsages, loading, error, refreshData } = useCardUsages(year, month);
 
     // ビュー切替時に現在の日付に移動
     useEffect(() => {
@@ -135,12 +161,152 @@ export default function CalendarPage() {
     // イベントクリック時のハンドラー
     const handleEventClick = (event: CalendarEvent) => {
         setSelectedEvent(event);
+        // フォーム値を初期化
+        setEditFormValues({
+            amount: event.amount,
+            where: event.where,
+            cardName: event.cardName,
+            memo: event.memo || '',
+            isActive: event.isActive
+        });
+        setIsEditing(false); // 表示モードで開始
         setDialogOpen(true);
     };
 
     // ダイアログを閉じる
     const handleCloseDialog = () => {
         setDialogOpen(false);
+        setIsEditing(false);
+    };
+
+    // 編集モードの切り替え
+    const toggleEditMode = () => {
+        if (isEditing) {
+            // 編集モードからビューモードに戻る場合、変更を破棄
+            if (selectedEvent) {
+                setEditFormValues({
+                    amount: selectedEvent.amount,
+                    where: selectedEvent.where,
+                    cardName: selectedEvent.cardName,
+                    memo: selectedEvent.memo || '',
+                    isActive: selectedEvent.isActive
+                });
+            }
+        }
+        setIsEditing(!isEditing);
+    };
+
+    // フォーム値の変更ハンドラ
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setEditFormValues(prev => ({
+            ...prev,
+            [name]: name === 'amount' ? Number(value) : value
+        }));
+    };
+
+    // スイッチの変更ハンドラ
+    const handleSwitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = e.target;
+        setEditFormValues(prev => ({
+            ...prev,
+            [name]: checked
+        }));
+    };
+
+    // アクティブ/非アクティブ状態を切り替える
+    const toggleActiveStatus = async () => {
+        if (!selectedEvent || !selectedEvent.id) return;
+
+        try {
+            setIsSaving(true);
+            const newActiveStatus = !selectedEvent.isActive;
+
+            // APIでデータを更新
+            const result = await CardUsageApi.updateCardUsage(selectedEvent.id, {
+                is_active: newActiveStatus
+            });
+
+            if (result) {
+                // 成功メッセージを表示
+                setSnackbarMessage(newActiveStatus ? '表示に設定しました' : '非表示に設定しました');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+
+                // 全データを再取得して表示を更新
+                await refreshData();
+
+                // 表示中のイベントも更新
+                if (selectedEvent) {
+                    setSelectedEvent({
+                        ...selectedEvent,
+                        isActive: newActiveStatus
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('状態の更新に失敗しました:', error);
+            setSnackbarMessage('更新に失敗しました');
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // カード利用情報の保存
+    const handleSaveChanges = async () => {
+        if (!selectedEvent || !selectedEvent.id) return;
+
+        try {
+            setIsSaving(true);
+
+            // APIでデータを更新
+            const result = await CardUsageApi.updateCardUsage(selectedEvent.id, {
+                amount: editFormValues.amount,
+                where_to_use: editFormValues.where,
+                card_name: editFormValues.cardName,
+                memo: editFormValues.memo,
+                is_active: editFormValues.isActive
+            });
+
+            if (result) {
+                // 成功メッセージを表示
+                setSnackbarMessage('利用情報を更新しました');
+                setSnackbarSeverity('success');
+                setSnackbarOpen(true);
+
+                // 保存後は編集モードを終了
+                setIsEditing(false);
+
+                // 全データを再取得して表示を更新
+                await refreshData();
+
+                // 表示中のイベントも更新
+                if (selectedEvent) {
+                    setSelectedEvent({
+                        ...selectedEvent,
+                        amount: editFormValues.amount,
+                        where: editFormValues.where,
+                        cardName: editFormValues.cardName,
+                        memo: editFormValues.memo,
+                        isActive: editFormValues.isActive
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('情報の更新に失敗しました:', error);
+            setSnackbarMessage('更新に失敗しました');
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // スナックバーを閉じる
+    const handleSnackbarClose = () => {
+        setSnackbarOpen(false);
     };
 
     // カレンダーのイベントのスタイル
@@ -148,6 +314,22 @@ export default function CalendarPage() {
         const amount = event.amount;
         let backgroundColor = '#3174ad';
 
+        if (event.isActive === false) {
+            // 非アクティブな項目はグレーアウト表示
+            return {
+                style: {
+                    backgroundColor: '#9e9e9e',
+                    borderRadius: '4px',
+                    opacity: 0.6,
+                    color: 'white',
+                    border: 'none',
+                    display: 'block',
+                    textDecoration: 'line-through'
+                }
+            };
+        }
+
+        // アクティブな項目は金額に応じた色分け
         if (amount < 1000) {
             backgroundColor = '#4caf50';
         } else if (amount < 3000) {
@@ -226,6 +408,29 @@ export default function CalendarPage() {
         event: EventComponent,
     };
 
+    // 追加ボタンクリックハンドラ
+    const handleAddButtonClick = () => {
+        setAddModalOpen(true);
+    };
+
+    // モーダルを閉じるハンドラ
+    const handleAddModalClose = () => {
+        setAddModalOpen(false);
+    };
+
+    // 保存成功時のハンドラ
+    const handleAddSuccess = async () => {
+        setAddModalOpen(false);
+
+        // 保存メッセージを表示
+        setSnackbarMessage('利用明細を追加しました');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+
+        // データを再読み込み
+        await refreshData();
+    };
+
     return (
         <ProtectedRoute>
             <MainLayout>
@@ -237,6 +442,18 @@ export default function CalendarPage() {
                             </Typography>
                         </Grid>
                         <Grid size="grow" />
+                        <Grid>
+                            <Tooltip title="新規明細を追加">
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<AddIcon />}
+                                    onClick={handleAddButtonClick}
+                                >
+                                    新規追加
+                                </Button>
+                            </Tooltip>
+                        </Grid>
                     </Grid>
                     <Grid container spacing={2} size={4} sx={{ mb: 1 }}>
                         <Typography variant="h6" gutterBottom>
@@ -382,50 +599,156 @@ export default function CalendarPage() {
                             {selectedEvent && (
                                 <Card variant="outlined" sx={{ mb: 2 }}>
                                     <CardContent>
-                                        <Typography variant="subtitle1" color="text.secondary">
-                                            利用日時
-                                        </Typography>
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            <Typography variant="body1" gutterBottom>
-                                                {formatDate(selectedEvent.start)}
-                                            </Typography>
-                                            <Chip
-                                                icon={<ScheduleIcon fontSize="small" />}
-                                                label={formatTime(selectedEvent.start)}
-                                                size="small"
-                                                color="primary"
-                                                variant="outlined"
-                                            />
-                                        </Box>
+                                        {isEditing ? (
+                                            <>
+                                                <TextField
+                                                    label="利用金額"
+                                                    name="amount"
+                                                    type="number"
+                                                    value={editFormValues.amount}
+                                                    onChange={handleFormChange}
+                                                    fullWidth
+                                                    margin="normal"
+                                                />
+                                                <TextField
+                                                    label="利用店舗"
+                                                    name="where"
+                                                    value={editFormValues.where}
+                                                    onChange={handleFormChange}
+                                                    fullWidth
+                                                    margin="normal"
+                                                />
+                                                <TextField
+                                                    label="カード名"
+                                                    name="cardName"
+                                                    value={editFormValues.cardName}
+                                                    onChange={handleFormChange}
+                                                    fullWidth
+                                                    margin="normal"
+                                                />
+                                                <TextField
+                                                    label="メモ"
+                                                    name="memo"
+                                                    value={editFormValues.memo}
+                                                    onChange={handleFormChange}
+                                                    fullWidth
+                                                    margin="normal"
+                                                    multiline
+                                                    rows={3}
+                                                />
+                                                <FormControlLabel
+                                                    control={
+                                                        <Switch
+                                                            checked={editFormValues.isActive}
+                                                            onChange={handleSwitchChange}
+                                                            name="isActive"
+                                                        />
+                                                    }
+                                                    label="表示/非表示"
+                                                />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Typography variant="subtitle1" color="text.secondary">
+                                                    利用日時
+                                                </Typography>
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    <Typography variant="body1" gutterBottom>
+                                                        {formatDate(selectedEvent.start)}
+                                                    </Typography>
+                                                    <Chip
+                                                        icon={<ScheduleIcon fontSize="small" />}
+                                                        label={formatTime(selectedEvent.start)}
+                                                        size="small"
+                                                        color="primary"
+                                                        variant="outlined"
+                                                    />
+                                                </Box>
 
-                                        <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
-                                            利用金額
-                                        </Typography>
-                                        <Typography variant="h5" color="primary" gutterBottom>
-                                            ¥{selectedEvent.amount.toLocaleString()}
-                                        </Typography>
+                                                <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
+                                                    利用金額
+                                                </Typography>
+                                                <Typography variant="h5" color="primary" gutterBottom>
+                                                    ¥{selectedEvent.amount.toLocaleString()}
+                                                </Typography>
 
-                                        <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
-                                            利用店舗
-                                        </Typography>
-                                        <Typography variant="body1" gutterBottom>
-                                            {selectedEvent.where}
-                                        </Typography>
+                                                <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
+                                                    利用店舗
+                                                </Typography>
+                                                <Typography variant="body1" gutterBottom>
+                                                    {selectedEvent.where}
+                                                </Typography>
 
-                                        <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
-                                            カード
-                                        </Typography>
-                                        <Typography variant="body1" gutterBottom>
-                                            {selectedEvent.cardName}
-                                        </Typography>
+                                                <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
+                                                    カード
+                                                </Typography>
+                                                <Typography variant="body1" gutterBottom>
+                                                    {selectedEvent.cardName}
+                                                </Typography>
+
+                                                {selectedEvent.memo && (
+                                                    <>
+                                                        <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
+                                                            メモ
+                                                        </Typography>
+                                                        <Typography variant="body1" gutterBottom sx={{ whiteSpace: 'pre-wrap' }}>
+                                                            {selectedEvent.memo}
+                                                        </Typography>
+                                                    </>
+                                                )}
+
+                                                <FormControlLabel
+                                                    control={
+                                                        <Switch
+                                                            checked={selectedEvent.isActive}
+                                                            onChange={toggleActiveStatus}
+                                                            name="isActive"
+                                                        />
+                                                    }
+                                                    label="表示/非表示"
+                                                />
+                                            </>
+                                        )}
                                     </CardContent>
                                 </Card>
                             )}
                         </DialogContent>
                         <DialogActions>
-                            <Button onClick={handleCloseDialog}>閉じる</Button>
+                            {isEditing ? (
+                                <>
+                                    <Button onClick={toggleEditMode} startIcon={<CancelIcon />} disabled={isSaving}>
+                                        キャンセル
+                                    </Button>
+                                    <Button onClick={handleSaveChanges} startIcon={<SaveIcon />} disabled={isSaving}>
+                                        保存
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button onClick={toggleEditMode} startIcon={<EditIcon />}>
+                                        編集
+                                    </Button>
+                                    <Button onClick={handleCloseDialog}>閉じる</Button>
+                                </>
+                            )}
                         </DialogActions>
                     </Dialog>
+
+                    {/* 新規明細追加モーダル */}
+                    <AddCardUsageModal
+                        open={addModalOpen}
+                        onClose={handleAddModalClose}
+                        onSave={handleAddSuccess}
+                    />
+
+                    {/* スナックバー */}
+                    <Snackbar
+                        open={snackbarOpen}
+                        autoHideDuration={6000}
+                        onClose={handleSnackbarClose}
+                        message={snackbarMessage}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    />
                 </Box>
             </MainLayout>
         </ProtectedRoute>

@@ -60,4 +60,6 @@ export interface CalendarEvent {
     amount: number;
     where: string;
     cardName: string;
+    memo?: string;
+    isActive: boolean; // アクティブかどうか（表示/非表示フラグ）
 }

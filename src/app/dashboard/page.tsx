@@ -9,20 +9,29 @@ import {
     Card,
     CircularProgress,
     Divider,
-    Grid
+    Grid,
+    Button,
+    Tooltip,
+    Snackbar
 } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
 import { convertTimestampToDate, formatDate } from '@/utils/dateUtils';
+import AddCardUsageModal from '@/components/ui/AddCardUsageModal';
 
 export default function DashboardPage() {
     const today = new Date();
     const [year] = useState<number>(today.getFullYear());
     const [month] = useState<number>(today.getMonth() + 1);
+    // 新規明細追加モーダル用のステート
+    const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
+    const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+    const [snackbarMessage, setSnackbarMessage] = useState<string>('');
 
-    const { cardUsages, loading: usagesLoading } = useCardUsages(year, month);
+    const { cardUsages, loading: usagesLoading, refreshData } = useCardUsages(year, month);
     const { loading: reportLoading } = useMonthlyReport(year, month);
 
     // 直近5件の利用履歴を取得
@@ -56,16 +65,57 @@ export default function DashboardPage() {
 
     const loading = usagesLoading || reportLoading;
 
+    // 追加ボタンクリックハンドラ
+    const handleAddButtonClick = () => {
+        setAddModalOpen(true);
+    };
+
+    // モーダルを閉じるハンドラ
+    const handleAddModalClose = () => {
+        setAddModalOpen(false);
+    };
+
+    // 保存成功時のハンドラ
+    const handleAddSuccess = async () => {
+        setAddModalOpen(false);
+
+        // 保存メッセージを表示
+        setSnackbarMessage('利用明細を追加しました');
+        setSnackbarOpen(true);
+
+        // データを再読み込み
+        await refreshData();
+    };
+
+    // スナックバーを閉じる
+    const handleSnackbarClose = () => {
+        setSnackbarOpen(false);
+    };
+
     return (
         <ProtectedRoute>
             <MainLayout>
                 <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h4" gutterBottom component="h1">
-                        ダッシュボード
-                    </Typography>
-                    <Typography variant="h6" gutterBottom color="textSecondary">
-                        {year}年{month}月の利用状況
-                    </Typography>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <div>
+                            <Typography variant="h4" gutterBottom component="h1">
+                                ダッシュボード
+                            </Typography>
+                            <Typography variant="h6" gutterBottom color="textSecondary">
+                                {year}年{month}月の利用状況
+                            </Typography>
+                        </div>
+                        <Tooltip title="新規明細を追加">
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<AddIcon />}
+                                onClick={handleAddButtonClick}
+                            >
+                                新規追加
+                            </Button>
+                        </Tooltip>
+                    </Box>
 
                     {loading ? (
                         <Box display="flex" justifyContent="center" my={4}>
@@ -217,6 +267,22 @@ export default function DashboardPage() {
                             </Grid>
                         </Grid>
                     )}
+
+                    {/* 新規明細追加モーダル */}
+                    <AddCardUsageModal
+                        open={addModalOpen}
+                        onClose={handleAddModalClose}
+                        onSave={handleAddSuccess}
+                    />
+
+                    {/* スナックバー */}
+                    <Snackbar
+                        open={snackbarOpen}
+                        autoHideDuration={6000}
+                        onClose={handleSnackbarClose}
+                        message={snackbarMessage}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    />
                 </Box>
             </MainLayout>
         </ProtectedRoute>
