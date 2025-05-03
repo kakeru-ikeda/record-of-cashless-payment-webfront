@@ -33,6 +33,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
 import { useAllWeeklyReports } from '@/hooks/useWeeklyReports';
+import { convertTimestampToDate, formatDate } from '@/utils/dateUtils';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -117,33 +118,9 @@ export default function ReportsPage() {
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([term, data]) => {
                     // startDateとendDateの変換処理
-                    let startDate: Date | undefined;
-                    let endDate: Date | undefined;
-                    
-                    if (data.termStartDate) {
-                        if (typeof data.termStartDate.toDate === 'function') {
-                            startDate = data.termStartDate.toDate();
-                        } else if (data.termStartDate._seconds !== undefined) {
-                            startDate = new Date(data.termStartDate._seconds * 1000);
-                        } else if (data.termStartDate.seconds !== undefined) {
-                            startDate = new Date(data.termStartDate.seconds * 1000);
-                        } else if (typeof data.termStartDate === 'string') {
-                            startDate = new Date(data.termStartDate);
-                        }
-                    }
-                    
-                    if (data.termEndDate) {
-                        if (typeof data.termEndDate.toDate === 'function') {
-                            endDate = data.termEndDate.toDate();
-                        } else if (data.termEndDate._seconds !== undefined) {
-                            endDate = new Date(data.termEndDate._seconds * 1000);
-                        } else if (data.termEndDate.seconds !== undefined) {
-                            endDate = new Date(data.termEndDate.seconds * 1000);
-                        } else if (typeof data.termEndDate === 'string') {
-                            endDate = new Date(data.termEndDate);
-                        }
-                    }
-                    
+                    const startDate = data.termStartDate ? convertTimestampToDate(data.termStartDate) : undefined;
+                    const endDate = data.termEndDate ? convertTimestampToDate(data.termEndDate) : undefined;
+
                     return {
                         term,
                         termName: term.replace('term', '第') + '週',
@@ -160,32 +137,8 @@ export default function ReportsPage() {
         const weekMap: Record<string, { total: number, count: number, items: CardUsage[] }> = {};
 
         cardUsages.forEach(usage => {
-            // datetime_of_useの型に応じて適切に日付を抽出
-            let dateObj: Date;
-            
-            if (usage.datetime_of_use) {
-                if (typeof usage.datetime_of_use.toDate === 'function') {
-                    // Firestoreのタイムスタンプオブジェクトの場合
-                    dateObj = usage.datetime_of_use.toDate();
-                } else if (usage.datetime_of_use._seconds !== undefined && usage.datetime_of_use._nanoseconds !== undefined) {
-                    // JSON形式のタイムスタンプオブジェクトの場合
-                    dateObj = new Date(usage.datetime_of_use._seconds * 1000);
-                } else if (usage.datetime_of_use.seconds !== undefined && usage.datetime_of_use.nanoseconds !== undefined) {
-                    // 別の形式のタイムスタンプオブジェクトの場合
-                    dateObj = new Date(usage.datetime_of_use.seconds * 1000);
-                } else if (typeof usage.datetime_of_use === 'string') {
-                    // ISO文字列の場合
-                    dateObj = new Date(usage.datetime_of_use);
-                } else {
-                    // その他の場合は数値としてミリ秒で処理
-                    dateObj = new Date(Number(usage.datetime_of_use));
-                }
-            } else {
-                // 日時情報がない場合は現在時刻をデフォルト値として使用
-                dateObj = new Date();
-                console.warn('利用情報に日時データがありません:', usage);
-            }
-            
+            // datetime_of_useをconvertTimestampToDate関数で安全に変換
+            const dateObj = convertTimestampToDate(usage.datetime_of_use);
             const day = dateObj.getDate();
 
             // 週番号を計算（簡易版: 日付から概算）
@@ -250,15 +203,6 @@ export default function ReportsPage() {
         : cardUsages.length;
 
     const averagePerTransaction = transactionCount > 0 ? Math.round(monthTotal / transactionCount) : 0;
-
-    // 日付のフォーマット
-    const formatDate = (date: Date) => {
-        return new Intl.DateTimeFormat('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).format(date);
-    };
 
     return (
         <ProtectedRoute>
@@ -461,77 +405,30 @@ export default function ReportsPage() {
                                                         <TableBody>
                                                             {[...cardUsages]
                                                                 .sort((a, b) => {
-                                                                    // a のタイムスタンプを変換
-                                                                    let dateA: Date;
-                                                                    if (a.datetime_of_use) {
-                                                                        if (typeof a.datetime_of_use.toDate === 'function') {
-                                                                            dateA = a.datetime_of_use.toDate();
-                                                                        } else if (a.datetime_of_use._seconds !== undefined) {
-                                                                            dateA = new Date(a.datetime_of_use._seconds * 1000);
-                                                                        } else if (a.datetime_of_use.seconds !== undefined) {
-                                                                            dateA = new Date(a.datetime_of_use.seconds * 1000);
-                                                                        } else if (typeof a.datetime_of_use === 'string') {
-                                                                            dateA = new Date(a.datetime_of_use);
-                                                                        } else {
-                                                                            dateA = new Date(Number(a.datetime_of_use));
-                                                                        }
-                                                                    } else {
-                                                                        dateA = new Date();
-                                                                    }
-                                                                    
-                                                                    // b のタイムスタンプを変換
-                                                                    let dateB: Date;
-                                                                    if (b.datetime_of_use) {
-                                                                        if (typeof b.datetime_of_use.toDate === 'function') {
-                                                                            dateB = b.datetime_of_use.toDate();
-                                                                        } else if (b.datetime_of_use._seconds !== undefined) {
-                                                                            dateB = new Date(b.datetime_of_use._seconds * 1000);
-                                                                        } else if (b.datetime_of_use.seconds !== undefined) {
-                                                                            dateB = new Date(b.datetime_of_use.seconds * 1000);
-                                                                        } else if (typeof b.datetime_of_use === 'string') {
-                                                                            dateB = new Date(b.datetime_of_use);
-                                                                        } else {
-                                                                            dateB = new Date(Number(b.datetime_of_use));
-                                                                        }
-                                                                    } else {
-                                                                        dateB = new Date();
-                                                                    }
-                                                                    
+                                                                    // convertTimestampToDateを使用して日付変換を簡素化
+                                                                    const dateA = convertTimestampToDate(a.datetime_of_use);
+                                                                    const dateB = convertTimestampToDate(b.datetime_of_use);
                                                                     return dateA.getTime() - dateB.getTime();
                                                                 })
                                                                 .map((usage, index) => {
-                                                                    // usage の日付変換
-                                                                    let usageDate: Date;
-                                                                    if (usage.datetime_of_use) {
-                                                                        if (typeof usage.datetime_of_use.toDate === 'function') {
-                                                                            usageDate = usage.datetime_of_use.toDate();
-                                                                        } else if (usage.datetime_of_use._seconds !== undefined) {
-                                                                            usageDate = new Date(usage.datetime_of_use._seconds * 1000);
-                                                                        } else if (usage.datetime_of_use.seconds !== undefined) {
-                                                                            usageDate = new Date(usage.datetime_of_use.seconds * 1000);
-                                                                        } else if (typeof usage.datetime_of_use === 'string') {
-                                                                            usageDate = new Date(usage.datetime_of_use);
-                                                                        } else {
-                                                                            usageDate = new Date(Number(usage.datetime_of_use));
-                                                                        }
-                                                                    } else {
-                                                                        usageDate = new Date();
-                                                                    }
+                                                                    // convertTimestampToDateを使用して日付変換
+                                                                    const usageDate = convertTimestampToDate(usage.datetime_of_use);
                                                                     
                                                                     return (
-                                                                    <TableRow key={index}>
-                                                                        <TableCell>
-                                                                            {formatDate(usageDate)}
-                                                                        </TableCell>
-                                                                        <TableCell>{usage.where_to_use}</TableCell>
-                                                                        <TableCell>
-                                                                            {usage.card_name.length > 15
-                                                                                ? `${usage.card_name.substring(0, 15)}...`
-                                                                                : usage.card_name}
-                                                                        </TableCell>
-                                                                        <TableCell align="right">¥{usage.amount.toLocaleString()}</TableCell>
-                                                                    </TableRow>
-                                                                )})}
+                                                                        <TableRow key={index}>
+                                                                            <TableCell>
+                                                                                {formatDate(usageDate)}
+                                                                            </TableCell>
+                                                                            <TableCell>{usage.where_to_use}</TableCell>
+                                                                            <TableCell>
+                                                                                {usage.card_name.length > 15
+                                                                                    ? `${usage.card_name.substring(0, 15)}...`
+                                                                                    : usage.card_name}
+                                                                            </TableCell>
+                                                                            <TableCell align="right">¥{usage.amount.toLocaleString()}</TableCell>
+                                                                        </TableRow>
+                                                                    )
+                                                                })}
                                                         </TableBody>
                                                     </Table>
                                                 </TableContainer>

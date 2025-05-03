@@ -33,6 +33,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { CalendarEvent } from '@/types';
+import { convertTimestampToDate, formatDate, formatTime, formatSimpleDate } from '@/utils/dateUtils';
 
 // カレンダーの日本語化
 moment.locale('ja');
@@ -77,32 +78,8 @@ export default function CalendarPage() {
     // 日付別集計データ
     const dailySummary = useMemo(() => {
         const summary = cardUsages.reduce((acc, usage) => {
-            // datetime_of_useの型に応じて適切に日付を抽出
-            let date: Date;
-            
-            if (usage.datetime_of_use) {
-                if (typeof usage.datetime_of_use.toDate === 'function') {
-                    // Firestoreのタイムスタンプオブジェクトの場合
-                    date = usage.datetime_of_use.toDate();
-                } else if (usage.datetime_of_use._seconds !== undefined && usage.datetime_of_use._nanoseconds !== undefined) {
-                    // JSON形式のタイムスタンプオブジェクトの場合
-                    date = new Date(usage.datetime_of_use._seconds * 1000);
-                } else if (usage.datetime_of_use.seconds !== undefined && usage.datetime_of_use.nanoseconds !== undefined) {
-                    // 別の形式のタイムスタンプオブジェクトの場合
-                    date = new Date(usage.datetime_of_use.seconds * 1000);
-                } else if (typeof usage.datetime_of_use === 'string') {
-                    // ISO文字列の場合
-                    date = new Date(usage.datetime_of_use);
-                } else {
-                    // その他の場合は数値としてミリ秒で処理
-                    date = new Date(Number(usage.datetime_of_use));
-                }
-            } else {
-                // 日時情報がない場合は現在時刻をデフォルト値として使用
-                date = new Date();
-                console.warn('利用情報に日時データがありません:', usage);
-            }
-
+            // 共通のconvertTimestampToDate関数を使用
+            const date = convertTimestampToDate(usage.datetime_of_use);
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
             if (!acc[dateKey]) {
@@ -149,28 +126,10 @@ export default function CalendarPage() {
                     return `${startOfWeek.getFullYear()}年${startOfWeek.getMonth() + 1}月${startOfWeek.getDate()}日〜${endOfWeek.getFullYear()}年${endOfWeek.getMonth() + 1}月${endOfWeek.getDate()}日`;
                 }
             case 'day':
-                return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+                return formatSimpleDate(date);
             default:
                 return `${date.getFullYear()}年${date.getMonth() + 1}月`;
         }
-    };
-
-    // 日付のフォーマット
-    const formatDate = (date: Date) => {
-        return new Intl.DateTimeFormat('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            weekday: 'short',
-        }).format(date);
-    };
-
-    // 時刻のみのフォーマット
-    const formatTime = (date: Date) => {
-        return new Intl.DateTimeFormat('ja-JP', {
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(date);
     };
 
     // イベントクリック時のハンドラー
