@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, doc, getDocs, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { WeeklyReport } from '@/types';
+import { ReportsApi } from '@/api/reportsApi';
 
 // 特定の週次レポートを取得するフック
 export const useWeeklyReport = (year: number, month: number, term: string) => {
@@ -15,25 +14,19 @@ export const useWeeklyReport = (year: number, month: number, term: string) => {
         const fetchWeeklyReport = async () => {
             try {
                 setLoading(true);
-                const paddedMonth = String(month).padStart(2, '0');
+                console.log(`API: 週次レポート取得 ${year}年${month}月 ${term}`);
 
-                // 新しいパス構造: reports/weekly/{year}-{month}/{term}
-                try {
-                    const weeklyReportRef = doc(db, 'reports', 'weekly', `${year}-${paddedMonth}`, term);
-                    const reportDoc = await getDoc(weeklyReportRef);
-
-                    if (reportDoc.exists()) {
-                        setWeeklyReport(reportDoc.data() as WeeklyReport);
-                        console.log(`週次レポートを取得しました: ${year}年${month}月 ${term}`);
-                    } else {
-                        console.log(`週次レポートが見つかりません: ${year}年${month}月 ${term}`);
-                        setWeeklyReport(null);
-                    }
-                } catch (err) {
-                    console.error('週次レポートの取得に失敗しました:', err);
-                    throw err;
+                // APIから週次レポートを取得
+                const report = await ReportsApi.getWeeklyReport(year, month, term);
+                
+                if (report) {
+                    setWeeklyReport(report);
+                    console.log(`週次レポートを取得しました: ${year}年${month}月 ${term}`);
+                } else {
+                    console.log(`週次レポートが見つかりません: ${year}年${month}月 ${term}`);
+                    setWeeklyReport(null);
                 }
-
+                
                 setLoading(false);
             } catch (err) {
                 console.error('週次レポートの取得中にエラーが発生しました:', err);
@@ -60,27 +53,19 @@ export const useAllWeeklyReports = (year: number, month: number) => {
         const fetchAllWeeklyReports = async () => {
             try {
                 setLoading(true);
-                const paddedMonth = String(month).padStart(2, '0');
-                const reports: Record<string, WeeklyReport> = {};
+                console.log(`API: 全週次レポート取得 ${year}年${month}月`);
 
-                // 新しいパス構造: reports/weekly/{year}-{month}
-                try {
-                    const weeklyReportsRef = collection(db, 'reports', 'weekly', `${year}-${paddedMonth}`);
-                    const reportDocs = await getDocs(weeklyReportsRef);
-
-                    reportDocs.forEach(doc => {
-                        if (doc.id.startsWith('term')) {
-                            reports[doc.id] = doc.data() as WeeklyReport;
-                        }
-                    });
-
+                // APIから全週次レポートを取得
+                const reports = await ReportsApi.getAllWeeklyReports(year, month);
+                
+                if (Object.keys(reports).length > 0) {
                     console.log(`週次レポートを${Object.keys(reports).length}件取得しました: ${year}年${month}月`);
                     setWeeklyReports(reports);
-                } catch (err) {
-                    console.error('週次レポートの取得に失敗しました:', err);
-                    throw err;
+                } else {
+                    console.log(`週次レポートが見つかりません: ${year}年${month}月`);
+                    setWeeklyReports({});
                 }
-
+                
                 setLoading(false);
             } catch (err) {
                 console.error('週次レポートの取得中にエラーが発生しました:', err);

@@ -15,7 +15,28 @@ import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
-import { Timestamp } from 'firebase/firestore';
+
+// タイムスタンプからDateオブジェクトを安全に取得する関数
+const safeGetDate = (timestamp: any): Date => {
+    if (!timestamp) return new Date();
+
+    if (typeof timestamp.toDate === 'function') {
+        // Firestoreのタイムスタンプオブジェクト
+        return timestamp.toDate();
+    } else if (timestamp._seconds !== undefined && timestamp._nanoseconds !== undefined) {
+        // JSON形式のタイムスタンプオブジェクト
+        return new Date(timestamp._seconds * 1000);
+    } else if (timestamp.seconds !== undefined && timestamp.nanoseconds !== undefined) {
+        // 別形式のタイムスタンプオブジェクト
+        return new Date(timestamp.seconds * 1000);
+    } else if (typeof timestamp === 'string') {
+        // ISO文字列
+        return new Date(timestamp);
+    } else {
+        // その他の場合は数値としてミリ秒で処理
+        return new Date(Number(timestamp));
+    }
+};
 
 export default function DashboardPage() {
     const today = new Date();
@@ -27,7 +48,12 @@ export default function DashboardPage() {
 
     // 直近5件の利用履歴を取得
     const recentTransactions = [...cardUsages]
-        .sort((a, b) => b.datetime_of_use.toDate().getTime() - a.datetime_of_use.toDate().getTime())
+        .sort((a, b) => {
+            // タイムスタンプを安全に変換してソート
+            const dateA = safeGetDate(a.datetime_of_use);
+            const dateB = safeGetDate(b.datetime_of_use);
+            return dateB.getTime() - dateA.getTime();
+        })
         .slice(0, 5);
 
     // 月の合計金額を計算
@@ -49,9 +75,9 @@ export default function DashboardPage() {
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 5);
 
-    const formatDate = (timestamp: Timestamp) => {
+    const formatDate = (timestamp: any) => {
         if (!timestamp) return '—';
-        const date = timestamp.toDate();
+        const date = safeGetDate(timestamp);
         return new Intl.DateTimeFormat('ja-JP', {
             year: 'numeric',
             month: '2-digit',

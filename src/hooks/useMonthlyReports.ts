@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import { MonthlyReport } from '@/types';
+import { ReportsApi } from '@/api/reportsApi';
 
-// Firestoreから特定の年月の月次レポートを取得するカスタムフック
+// APIから特定の年月の月次レポートを取得するカスタムフック
 export const useMonthlyReport = (year: number, month: number) => {
     const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
     const [loading, setLoading] = useState(true);
@@ -15,25 +14,19 @@ export const useMonthlyReport = (year: number, month: number) => {
         const fetchMonthlyReport = async () => {
             try {
                 setLoading(true);
-                const paddedMonth = String(month).padStart(2, '0');
-
-                // 新しいパス構造: reports/monthly/{year}/{month}
-                try {
-                    const monthlyReportRef = doc(db, 'reports', 'monthly', String(year), paddedMonth);
-                    const reportDoc = await getDoc(monthlyReportRef);
-
-                    if (reportDoc.exists()) {
-                        setMonthlyReport(reportDoc.data() as MonthlyReport);
-                        console.log(`月次レポートを取得しました: ${year}年${month}月`);
-                    } else {
-                        console.log(`月次レポートが見つかりません: ${year}年${month}月`);
-                        setMonthlyReport(null);
-                    }
-                } catch (err) {
-                    console.error('月次レポートの取得に失敗しました:', err);
-                    throw err;
+                console.log(`API: 月次レポート取得 ${year}年${month}月`);
+                
+                // APIから月次レポートを取得
+                const report = await ReportsApi.getMonthlyReport(year, month);
+                
+                if (report) {
+                    setMonthlyReport(report);
+                    console.log(`月次レポートを取得しました: ${year}年${month}月`);
+                } else {
+                    console.log(`月次レポートが見つかりません: ${year}年${month}月`);
+                    setMonthlyReport(null);
                 }
-
+                
                 setLoading(false);
             } catch (err) {
                 console.error('月次レポートの取得中にエラーが発生しました:', err);

@@ -77,7 +77,32 @@ export default function CalendarPage() {
     // 日付別集計データ
     const dailySummary = useMemo(() => {
         const summary = cardUsages.reduce((acc, usage) => {
-            const date = usage.datetime_of_use.toDate();
+            // datetime_of_useの型に応じて適切に日付を抽出
+            let date: Date;
+            
+            if (usage.datetime_of_use) {
+                if (typeof usage.datetime_of_use.toDate === 'function') {
+                    // Firestoreのタイムスタンプオブジェクトの場合
+                    date = usage.datetime_of_use.toDate();
+                } else if (usage.datetime_of_use._seconds !== undefined && usage.datetime_of_use._nanoseconds !== undefined) {
+                    // JSON形式のタイムスタンプオブジェクトの場合
+                    date = new Date(usage.datetime_of_use._seconds * 1000);
+                } else if (usage.datetime_of_use.seconds !== undefined && usage.datetime_of_use.nanoseconds !== undefined) {
+                    // 別の形式のタイムスタンプオブジェクトの場合
+                    date = new Date(usage.datetime_of_use.seconds * 1000);
+                } else if (typeof usage.datetime_of_use === 'string') {
+                    // ISO文字列の場合
+                    date = new Date(usage.datetime_of_use);
+                } else {
+                    // その他の場合は数値としてミリ秒で処理
+                    date = new Date(Number(usage.datetime_of_use));
+                }
+            } else {
+                // 日時情報がない場合は現在時刻をデフォルト値として使用
+                date = new Date();
+                console.warn('利用情報に日時データがありません:', usage);
+            }
+
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
             if (!acc[dateKey]) {
