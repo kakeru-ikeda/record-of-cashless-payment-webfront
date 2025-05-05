@@ -8,6 +8,8 @@ export interface CardUsage {
     amount: number;
     where_to_use: string;
     created_at: Timestamp;
+    memo?: string; // メモ（オプション）
+    is_active?: boolean; // 有効かどうか（非表示フラグ）
 }
 
 // デイリーレポートの型定義
@@ -58,4 +60,6 @@ export interface CalendarEvent {
     amount: number;
     where: string;
     cardName: string;
+    memo?: string;
+    isActive: boolean; // アクティブかどうか（表示/非表示フラグ）
 }

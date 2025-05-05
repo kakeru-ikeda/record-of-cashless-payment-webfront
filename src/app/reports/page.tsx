@@ -33,6 +33,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
 import { useAllWeeklyReports } from '@/hooks/useWeeklyReports';
+import { convertTimestampToDate, formatDate } from '@/utils/dateUtils';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -115,23 +116,29 @@ export default function ReportsPage() {
         if (Object.keys(weeklyReports).length > 0) {
             return Object.entries(weeklyReports)
                 .sort(([a], [b]) => a.localeCompare(b))
-                .map(([term, data]) => ({
-                    term,
-                    termName: term.replace('term', '第') + '週',
-                    total: data.totalAmount,
-                    count: data.totalCount,
-                    // その他のレポート情報も含める
-                    startDate: data.termStartDate?.toDate(),
-                    endDate: data.termEndDate?.toDate(),
-                    hasReportSent: data.hasReportSent,
-                }));
+                .map(([term, data]) => {
+                    // startDateとendDateの変換処理
+                    const startDate = data.termStartDate ? convertTimestampToDate(data.termStartDate) : undefined;
+                    const endDate = data.termEndDate ? convertTimestampToDate(data.termEndDate) : undefined;
+
+                    return {
+                        term,
+                        termName: term.replace('term', '第') + '週',
+                        total: data.totalAmount,
+                        count: data.totalCount,
+                        startDate,
+                        endDate,
+                        hasReportSent: data.hasReportSent,
+                    };
+                });
         }
 
         // バックエンドからの週次レポートがない場合は、cardUsagesからフロントエンドで集計
         const weekMap: Record<string, { total: number, count: number, items: CardUsage[] }> = {};
 
         cardUsages.forEach(usage => {
-            const dateObj = usage.datetime_of_use.toDate();
+            // datetime_of_useをconvertTimestampToDate関数で安全に変換
+            const dateObj = convertTimestampToDate(usage.datetime_of_use);
             const day = dateObj.getDate();
 
             // 週番号を計算（簡易版: 日付から概算）
@@ -196,15 +203,6 @@ export default function ReportsPage() {
         : cardUsages.length;
 
     const averagePerTransaction = transactionCount > 0 ? Math.round(monthTotal / transactionCount) : 0;
-
-    // 日付のフォーマット
-    const formatDate = (date: Date) => {
-        return new Intl.DateTimeFormat('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).format(date);
-    };
 
     return (
         <ProtectedRoute>
@@ -406,21 +404,31 @@ export default function ReportsPage() {
                                                         </TableHead>
                                                         <TableBody>
                                                             {[...cardUsages]
-                                                                .sort((a, b) => a.datetime_of_use.toDate().getTime() - b.datetime_of_use.toDate().getTime())
-                                                                .map((usage, index) => (
-                                                                    <TableRow key={index}>
-                                                                        <TableCell>
-                                                                            {formatDate(usage.datetime_of_use.toDate())}
-                                                                        </TableCell>
-                                                                        <TableCell>{usage.where_to_use}</TableCell>
-                                                                        <TableCell>
-                                                                            {usage.card_name.length > 15
-                                                                                ? `${usage.card_name.substring(0, 15)}...`
-                                                                                : usage.card_name}
-                                                                        </TableCell>
-                                                                        <TableCell align="right">¥{usage.amount.toLocaleString()}</TableCell>
-                                                                    </TableRow>
-                                                                ))}
+                                                                .sort((a, b) => {
+                                                                    // convertTimestampToDateを使用して日付変換を簡素化
+                                                                    const dateA = convertTimestampToDate(a.datetime_of_use);
+                                                                    const dateB = convertTimestampToDate(b.datetime_of_use);
+                                                                    return dateA.getTime() - dateB.getTime();
+                                                                })
+                                                                .map((usage, index) => {
+                                                                    // convertTimestampToDateを使用して日付変換
+                                                                    const usageDate = convertTimestampToDate(usage.datetime_of_use);
+                                                                    
+                                                                    return (
+                                                                        <TableRow key={index}>
+                                                                            <TableCell>
+                                                                                {formatDate(usageDate)}
+                                                                            </TableCell>
+                                                                            <TableCell>{usage.where_to_use}</TableCell>
+                                                                            <TableCell>
+                                                                                {usage.card_name.length > 15
+                                                                                    ? `${usage.card_name.substring(0, 15)}...`
+                                                                                    : usage.card_name}
+                                                                            </TableCell>
+                                                                            <TableCell align="right">¥{usage.amount.toLocaleString()}</TableCell>
+                                                                        </TableRow>
+                                                                    )
+                                                                })}
                                                         </TableBody>
                                                     </Table>
                                                 </TableContainer>
