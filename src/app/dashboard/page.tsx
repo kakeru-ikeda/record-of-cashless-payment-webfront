@@ -36,6 +36,7 @@ export default function DashboardPage() {
 
     // 直近5件の利用履歴を取得
     const recentTransactions = [...cardUsages]
+        .filter(usage => usage.is_active !== false)  // アクティブな項目のみフィルタリング
         .sort((a, b) => {
             // convertTimestampToDate関数を使用して日付変換を簡素化
             const dateA = convertTimestampToDate(a.datetime_of_use);
@@ -44,11 +45,12 @@ export default function DashboardPage() {
         })
         .slice(0, 5);
 
-    // 月の合計金額を計算
-    const totalAmount = cardUsages.reduce((sum, usage) => sum + usage.amount, 0);
+    // 月の合計金額を計算（アクティブな項目のみ）
+    const activeUsages = cardUsages.filter(usage => usage.is_active !== false);
+    const totalAmount = activeUsages.reduce((sum, usage) => sum + usage.amount, 0);
 
-    // 店舗ごとの利用頻度を集計
-    const frequentStores = cardUsages.reduce((acc, usage) => {
+    // 店舗ごとの利用頻度を集計（アクティブな項目のみ）
+    const frequentStores = activeUsages.reduce((acc, usage) => {
         const store = usage.where_to_use;
         if (!acc[store]) {
             acc[store] = { count: 0, total: 0 };
@@ -134,7 +136,7 @@ export default function DashboardPage() {
                                             ¥{totalAmount.toLocaleString()}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
-                                            {cardUsages.length}件の利用
+                                            {activeUsages.length}件の利用
                                         </Typography>
                                     </CardContent>
                                 </Card>
