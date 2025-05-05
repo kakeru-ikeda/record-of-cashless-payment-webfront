@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * 様々な形式のタイムスタンプをDate型に安全に変換する関数
  * FirestoreのTimestampや、JSONで変換された形式(_seconds/_nanoseconds)、

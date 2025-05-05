@@ -70,7 +70,7 @@ export default function CalendarPage() {
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
     const [snackbarMessage, setSnackbarMessage] = useState<string>('');
-    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+    const [, setSnackbarSeverity] = useState<'success' | 'error'>('success');
     // 新規明細追加モーダル用のステート
     const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
 
