@@ -90,8 +90,10 @@ export default function CalendarPage() {
 
     // 月次集計データ
     const monthSummary = useMemo(() => {
-        const total = cardUsages.reduce((sum, usage) => sum + usage.amount, 0);
-        const count = cardUsages.length;
+        // アクティブ状態の項目のみをフィルタリングして計算
+        const activeUsages = cardUsages.filter(usage => usage.is_active !== false);
+        const total = activeUsages.reduce((sum, usage) => sum + usage.amount, 0);
+        const count = activeUsages.length;
         const average = count > 0 ? Math.round(total / count) : 0;
 
         return {
@@ -103,7 +105,10 @@ export default function CalendarPage() {
 
     // 日付別集計データ
     const dailySummary = useMemo(() => {
-        const summary = cardUsages.reduce((acc, usage) => {
+        // アクティブ状態の項目のみをフィルタリング
+        const activeUsages = cardUsages.filter(usage => usage.is_active !== false);
+        
+        const summary = activeUsages.reduce((acc, usage) => {
             // 共通のconvertTimestampToDate関数を使用
             const date = convertTimestampToDate(usage.datetime_of_use);
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -644,7 +649,7 @@ export default function CalendarPage() {
                                                             name="isActive"
                                                         />
                                                     }
-                                                    label="表示/非表示"
+                                                    label="有効"
                                                 />
                                             </>
                                         ) : (
@@ -705,7 +710,7 @@ export default function CalendarPage() {
                                                             name="isActive"
                                                         />
                                                     }
-                                                    label="表示/非表示"
+                                                    label="有効"
                                                 />
                                             </>
                                         )}
