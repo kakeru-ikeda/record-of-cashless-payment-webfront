@@ -1,4 +1,4 @@
-import { ApiClient, ApiResponse } from './apiClient';
+import { ApiClient } from './apiClient';
 import { CardUsage } from '@/types';
 
 /**
@@ -14,7 +14,7 @@ export class CardUsageApi {
     try {
       const paddedMonth = month.toString().padStart(2, '0');
       const response = await ApiClient.get<CardUsage[]>(`/card-usages?year=${year}&month=${paddedMonth}`);
-      
+
       if (response.success && response.data) {
         return response.data;
       }
@@ -32,7 +32,7 @@ export class CardUsageApi {
   public static async getCardUsageById(id: string): Promise<CardUsage | null> {
     try {
       const response = await ApiClient.get<CardUsage>(`/card-usages/${id}`);
-      
+
       if (response.success && response.data) {
         return response.data;
       }
@@ -50,7 +50,7 @@ export class CardUsageApi {
   public static async createCardUsage(cardUsage: Partial<CardUsage>): Promise<CardUsage | null> {
     try {
       const response = await ApiClient.post<CardUsage, Partial<CardUsage>>('/card-usages', cardUsage);
-      
+
       if (response.success && response.data) {
         return response.data;
       }
@@ -69,7 +69,7 @@ export class CardUsageApi {
   public static async updateCardUsage(id: string, cardUsage: Partial<CardUsage>): Promise<CardUsage | null> {
     try {
       const response = await ApiClient.put<CardUsage, Partial<CardUsage>>(`/card-usages/${id}`, cardUsage);
-      
+
       if (response.success && response.data) {
         return response.data;
       }
