@@ -19,6 +19,7 @@ runConfig:
 
   # Grant access to secrets in Cloud Secret Manager.
   # See https://firebase.google.com/docs/app-hosting/configure#secret-parameters
+  # firebase apphosting:secrets:set SECRET_NAME
   # - variable: MY_SECRET
   #   secret: mySecretRef
 env:
@@ -34,3 +35,5 @@ env:
     secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     secret: NEXT_PUBLIC_FIREBASE_APP_ID
+  - variable: NEXT_PUBLIC_API_BASE_URL
+    secret: NEXT_PUBLIC_API_BASE_URL
