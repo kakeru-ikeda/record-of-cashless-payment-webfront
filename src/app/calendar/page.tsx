@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     Box,
     Paper,
@@ -53,8 +53,8 @@ const localizer = momentLocalizer(moment);
 export default function CalendarPage() {
     const today = new Date();
     const [currentDate, setCurrentDate] = useState<Date>(today);
-    const [year, setYear] = useState<number>(today.getFullYear());
-    const [month, setMonth] = useState<number>(today.getMonth() + 1);
+    const [, setYear] = useState<number>(today.getFullYear());
+    const [, setMonth] = useState<number>(today.getMonth() + 1);
     const [dateRange, setDateRange] = useState<DateRange>({
         start: new Date(today.getFullYear(), today.getMonth(), 1),
         end: new Date(today.getFullYear(), today.getMonth() + 1, 0)
@@ -77,8 +77,6 @@ export default function CalendarPage() {
     const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
 
     const { events, cardUsages, loading, error, refreshData } = useCardUsages(dateRange);
-
-    const calendarRef = useRef(null);
 
     useEffect(() => {
         console.log('カレンダービュー変更:', view);
