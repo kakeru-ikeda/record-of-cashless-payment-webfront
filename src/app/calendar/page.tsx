@@ -33,7 +33,7 @@ import {
     Cancel as CancelIcon,
     Add as AddIcon,
 } from '@mui/icons-material';
-import { Calendar, momentLocalizer, View } from 'react-big-calendar';
+import { Calendar, momentLocalizer, View, DateRange } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ja';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -53,12 +53,15 @@ const localizer = momentLocalizer(moment);
 export default function CalendarPage() {
     const today = new Date();
     const [currentDate, setCurrentDate] = useState<Date>(today);
-    const [year, setYear] = useState<number>(today.getFullYear());
-    const [month, setMonth] = useState<number>(today.getMonth() + 1);
+    const [, setYear] = useState<number>(today.getFullYear());
+    const [, setMonth] = useState<number>(today.getMonth() + 1);
+    const [dateRange, setDateRange] = useState<DateRange>({
+        start: new Date(today.getFullYear(), today.getMonth(), 1),
+        end: new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    });
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const [view, setView] = useState<View>('month');
-    // 編集モードの状態
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [editFormValues, setEditFormValues] = useState({
         amount: 0,
@@ -71,29 +74,34 @@ export default function CalendarPage() {
     const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
     const [snackbarMessage, setSnackbarMessage] = useState<string>('');
     const [, setSnackbarSeverity] = useState<'success' | 'error'>('success');
-    // 新規明細追加モーダル用のステート
     const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
 
-    // カレンダーの日付範囲に基づいてデータを取得
-    const { events, cardUsages, loading, error, refreshData } = useCardUsages(year, month);
+    const { events, cardUsages, loading, error, refreshData } = useCardUsages(dateRange);
 
-    // ビュー切替時に現在の日付に移動
+    useEffect(() => {
+        console.log('カレンダービュー変更:', view);
+        console.log('現在の日付:', currentDate);
+        console.log('日付範囲:', `${dateRange.start.toLocaleDateString()} 〜 ${dateRange.end.toLocaleDateString()}`);
+    }, [view, currentDate, dateRange]);
+
     useEffect(() => {
         updateDateByView(currentDate);
-    }, [view, currentDate]);
+    }, [view]);
 
-    // currentDateが変更された時にyearとmonthも更新
     useEffect(() => {
-        setYear(currentDate.getFullYear());
-        setMonth(currentDate.getMonth() + 1);
+        updateDateByView(currentDate);
     }, [currentDate]);
 
-    // 月次集計データ
     const monthSummary = useMemo(() => {
-        // アクティブ状態の項目のみをフィルタリングして計算
         const activeUsages = cardUsages.filter(usage => usage.is_active !== false);
-        const total = activeUsages.reduce((sum, usage) => sum + usage.amount, 0);
-        const count = activeUsages.length;
+
+        const filteredUsages = activeUsages.filter(usage => {
+            const date = convertTimestampToDate(usage.datetime_of_use);
+            return date >= dateRange.start && date <= dateRange.end;
+        });
+
+        const total = filteredUsages.reduce((sum, usage) => sum + usage.amount, 0);
+        const count = filteredUsages.length;
         const average = count > 0 ? Math.round(total / count) : 0;
 
         return {
@@ -101,15 +109,17 @@ export default function CalendarPage() {
             count,
             average
         };
-    }, [cardUsages]);
+    }, [cardUsages, dateRange]);
 
-    // 日付別集計データ
     const dailySummary = useMemo(() => {
-        // アクティブ状態の項目のみをフィルタリング
         const activeUsages = cardUsages.filter(usage => usage.is_active !== false);
-        
-        const summary = activeUsages.reduce((acc, usage) => {
-            // 共通のconvertTimestampToDate関数を使用
+
+        const filteredUsages = activeUsages.filter(usage => {
+            const date = convertTimestampToDate(usage.datetime_of_use);
+            return date >= dateRange.start && date <= dateRange.end;
+        });
+
+        const summary = filteredUsages.reduce((acc, usage) => {
             const date = convertTimestampToDate(usage.datetime_of_use);
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -127,17 +137,61 @@ export default function CalendarPage() {
             return acc;
         }, {} as Record<string, { count: number; total: number; date: Date }>);
 
-        // 日付でソートした配列に変換
         return Object.values(summary).sort((a, b) => a.date.getTime() - b.date.getTime());
-    }, [cardUsages]);
+    }, [cardUsages, dateRange]);
 
-    // 指定された日付に基づいてカレンダーの表示を更新
     const updateDateByView = (date: Date) => {
         setYear(date.getFullYear());
         setMonth(date.getMonth() + 1);
+
+        console.log('ビュー更新の呼び出し:', view, date.toLocaleDateString());
+
+        let start: Date, end: Date;
+
+        switch (view) {
+            case 'month':
+                start = new Date(date.getFullYear(), date.getMonth(), 1);
+                // 月末日を確実に取得するよう修正（次の月の0日 = 今月の末日）
+                end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+                console.log('月表示の範囲計算:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
+                break;
+            case 'week':
+                const dayOfWeek = date.getDay();
+                start = new Date(date);
+                start.setDate(date.getDate() - dayOfWeek);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                // 週の終了日の終わりまで含める
+                end.setHours(23, 59, 59, 999);
+                console.log('週表示の範囲計算:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
+                break;
+            case 'day':
+                // 日表示の場合は、その日の00:00:00から23:59:59までを範囲とする
+                start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
+                end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+                console.log('日表示の範囲計算:', `${start.toLocaleDateString()} (${start.toLocaleTimeString()} 〜 ${end.toLocaleTimeString()})`);
+                break;
+            default:
+                start = new Date(date.getFullYear(), date.getMonth(), 1);
+                end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+                console.log('デフォルトの範囲計算:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
+        }
+
+        console.log('日付範囲を設定:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
+        setDateRange({ start, end });
     };
 
-    // タイトル表示用のフォーマット
+    const handleNavigate = (newDate: Date) => {
+        console.log('ナビゲーション:', newDate.toLocaleDateString());
+        setCurrentDate(newDate);
+    };
+
+    const handleViewChange = (newView: View) => {
+        console.log('ビュー変更:', newView);
+        setView(newView);
+        updateDateByView(currentDate);
+    };
+
     const formatTitleDate = () => {
         const date = currentDate;
         switch (view) {
@@ -163,10 +217,8 @@ export default function CalendarPage() {
         }
     };
 
-    // イベントクリック時のハンドラー
     const handleEventClick = (event: CalendarEvent) => {
         setSelectedEvent(event);
-        // フォーム値を初期化
         setEditFormValues({
             amount: event.amount,
             where: event.where,
@@ -174,20 +226,17 @@ export default function CalendarPage() {
             memo: event.memo || '',
             isActive: event.isActive
         });
-        setIsEditing(false); // 表示モードで開始
+        setIsEditing(false);
         setDialogOpen(true);
     };
 
-    // ダイアログを閉じる
     const handleCloseDialog = () => {
         setDialogOpen(false);
         setIsEditing(false);
     };
 
-    // 編集モードの切り替え
     const toggleEditMode = () => {
         if (isEditing) {
-            // 編集モードからビューモードに戻る場合、変更を破棄
             if (selectedEvent) {
                 setEditFormValues({
                     amount: selectedEvent.amount,
@@ -201,7 +250,6 @@ export default function CalendarPage() {
         setIsEditing(!isEditing);
     };
 
-    // フォーム値の変更ハンドラ
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setEditFormValues(prev => ({
@@ -210,7 +258,6 @@ export default function CalendarPage() {
         }));
     };
 
-    // スイッチの変更ハンドラ
     const handleSwitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
         setEditFormValues(prev => ({
@@ -219,7 +266,6 @@ export default function CalendarPage() {
         }));
     };
 
-    // アクティブ/非アクティブ状態を切り替える
     const toggleActiveStatus = async () => {
         if (!selectedEvent || !selectedEvent.id) return;
 
@@ -227,21 +273,17 @@ export default function CalendarPage() {
             setIsSaving(true);
             const newActiveStatus = !selectedEvent.isActive;
 
-            // APIでデータを更新
             const result = await CardUsageApi.updateCardUsage(selectedEvent.id, {
                 is_active: newActiveStatus
             });
 
             if (result) {
-                // 成功メッセージを表示
                 setSnackbarMessage(newActiveStatus ? '表示に設定しました' : '非表示に設定しました');
                 setSnackbarSeverity('success');
                 setSnackbarOpen(true);
 
-                // 全データを再取得して表示を更新
                 await refreshData();
 
-                // 表示中のイベントも更新
                 if (selectedEvent) {
                     setSelectedEvent({
                         ...selectedEvent,
@@ -259,14 +301,12 @@ export default function CalendarPage() {
         }
     };
 
-    // カード利用情報の保存
     const handleSaveChanges = async () => {
         if (!selectedEvent || !selectedEvent.id) return;
 
         try {
             setIsSaving(true);
 
-            // APIでデータを更新
             const result = await CardUsageApi.updateCardUsage(selectedEvent.id, {
                 amount: editFormValues.amount,
                 where_to_use: editFormValues.where,
@@ -276,18 +316,14 @@ export default function CalendarPage() {
             });
 
             if (result) {
-                // 成功メッセージを表示
                 setSnackbarMessage('利用情報を更新しました');
                 setSnackbarSeverity('success');
                 setSnackbarOpen(true);
 
-                // 保存後は編集モードを終了
                 setIsEditing(false);
 
-                // 全データを再取得して表示を更新
                 await refreshData();
 
-                // 表示中のイベントも更新
                 if (selectedEvent) {
                     setSelectedEvent({
                         ...selectedEvent,
@@ -309,18 +345,15 @@ export default function CalendarPage() {
         }
     };
 
-    // スナックバーを閉じる
     const handleSnackbarClose = () => {
         setSnackbarOpen(false);
     };
 
-    // カレンダーのイベントのスタイル
     const eventStyleGetter = (event: CalendarEvent) => {
         const amount = event.amount;
         let backgroundColor = '#3174ad';
 
         if (event.isActive === false) {
-            // 非アクティブな項目はグレーアウト表示
             return {
                 style: {
                     backgroundColor: '#9e9e9e',
@@ -334,12 +367,9 @@ export default function CalendarPage() {
             };
         }
 
-        // アクティブな項目は金額に応じた色分け
         if (amount < 1000) {
             backgroundColor = '#4caf50';
         } else if (amount < 3000) {
-            backgroundColor = '#2196f3';
-        } else if (amount < 10000) {
             backgroundColor = '#ff9800';
         } else {
             backgroundColor = '#f44336';
@@ -357,22 +387,18 @@ export default function CalendarPage() {
         };
     };
 
-    // ビューに応じてイベント表示を調整するためのカスタムコンポーネント
     const EventComponent = ({ event }: { event: CalendarEvent }) => {
         if (view === 'month') {
-            // スマートフォン表示の場合はより簡潔な表示にする
             const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
             if (isMobile) {
-                // モバイル向けにより簡潔な表示
                 return (
                     <div style={{
                         fontSize: '0.75rem',
                         padding: '1px',
                         textAlign: 'center',
                         whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        overflow: 'hidden'
                     }}>
                         ¥{event.amount.toLocaleString()}
                     </div>
@@ -463,6 +489,21 @@ export default function CalendarPage() {
                     <Grid container spacing={2} size={4} sx={{ mb: 1 }}>
                         <Typography variant="h6" gutterBottom>
                             合計: ¥{monthSummary.total.toLocaleString()} ({monthSummary.count}件)
+                            {view === 'month' && (
+                                <Typography variant="body2" component="span" sx={{ ml: 2 }}>
+                                    {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月
+                                </Typography>
+                            )}
+                            {view === 'week' && (
+                                <Typography variant="body2" component="span" sx={{ ml: 2 }}>
+                                    {dateRange.start.toLocaleDateString('ja-JP')} 〜 {dateRange.end.toLocaleDateString('ja-JP')}
+                                </Typography>
+                            )}
+                            {view === 'day' && (
+                                <Typography variant="body2" component="span" sx={{ ml: 2 }}>
+                                    {currentDate.toLocaleDateString('ja-JP')}
+                                </Typography>
+                            )}
                         </Typography>
                     </Grid>
 
@@ -494,29 +535,25 @@ export default function CalendarPage() {
                                         events={events}
                                         startAccessor="start"
                                         endAccessor="end"
-                                        titleAccessor={(event) => `¥${event.amount.toLocaleString()} - ${event.where}`} // タイトルとして店舗名を使用
+                                        titleAccessor={(event) => `¥${event.amount.toLocaleString()} - ${event.where}`}
                                         style={{ height: '100%' }}
                                         views={['month', 'week', 'day']}
                                         view={view}
-                                        onView={setView}
+                                        onView={handleViewChange}
                                         date={currentDate}
-                                        onNavigate={(date) => setCurrentDate(date)}
+                                        onNavigate={handleNavigate}
                                         onSelectEvent={(event) => handleEventClick(event as CalendarEvent)}
                                         eventPropGetter={eventStyleGetter}
                                         components={components}
-                                        // フォーマット設定：時間表示のカスタマイズ
                                         formats={{
-                                            // 週・日表示での時間表示を無効化（店舗名のみ表示）
                                             eventTimeRangeFormat: () => '',
                                             eventTimeRangeStartFormat: () => '',
                                             eventTimeRangeEndFormat: () => '',
-                                            // その他の標準フォーマット
                                             dayHeaderFormat: (date) =>
                                                 localizer.format(date, 'dddd MMM DD'),
                                             dayRangeHeaderFormat: ({ start, end }) =>
                                                 `${localizer.format(start, 'MMM DD')} – ${localizer.format(end, 'MMM DD')}`,
                                         }}
-                                        // 月表示では終日イベントとして扱う
                                         dayPropGetter={(date) => {
                                             const today = new Date();
                                             return {
@@ -530,14 +567,13 @@ export default function CalendarPage() {
                                                 }
                                             };
                                         }}
-                                        // 月表示では終日イベントとして扱い、週・日表示では時刻を考慮
                                         defaultView={view}
                                         popup={view === 'month'}
                                         showMultiDayTimes={view !== 'month'}
                                         step={30}
                                         timeslots={2}
-                                        min={new Date(0, 0, 0, 0, 0)} // 0:00 AM
-                                        max={new Date(0, 0, 0, 23, 59)} // 11:59 PM
+                                        min={new Date(0, 0, 0, 0, 0)}
+                                        max={new Date(0, 0, 0, 23, 59)}
                                         messages={{
                                             today: '今日',
                                             previous: '前へ',
@@ -552,6 +588,18 @@ export default function CalendarPage() {
                                             allDay: '終日',
                                             noEventsInRange: 'この期間の利用データはありません',
                                         }}
+                                        onRangeChange={(range) => {
+                                            console.log('カレンダー範囲変更:', range);
+                                            if (Array.isArray(range)) {
+                                                console.log('日付配列:', range.map(d => d.toLocaleDateString()).join(', '));
+                                            } else if (range.start && range.end) {
+                                                console.log('日付範囲オブジェクト:', range.start.toLocaleDateString(), '〜', range.end.toLocaleDateString());
+                                                setDateRange({
+                                                    start: new Date(range.start),
+                                                    end: new Date(range.end)
+                                                });
+                                            }
+                                        }}
                                     />
                                 )}
                             </Paper>
@@ -561,7 +609,11 @@ export default function CalendarPage() {
                         <Grid size={{ xs: 12, md: 4 }}>
                             <Paper elevation={2} sx={{ p: 2, maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
                                 <Typography variant="h6" gutterBottom>
-                                    日別利用金額
+                                    {view === 'month'
+                                        ? `日別利用金額 (${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月)`
+                                        : view === 'week'
+                                            ? '日別利用金額 (選択中の週)'
+                                            : '日別利用金額'}
                                 </Typography>
                                 <Divider sx={{ mb: 2 }} />
 
@@ -578,7 +630,13 @@ export default function CalendarPage() {
                                                         primary={formatDate(day.date)}
                                                         secondary={`${day.count}件の利用`}
                                                     />
-                                                    <Typography variant="body1" color={day.total > 5000 ? "error" : "primary"} fontWeight="bold">
+                                                    <Typography variant="body1" color={
+                                                        day.total <= 1000
+                                                            ? "success.main"
+                                                            : day.total <= 3000
+                                                                ? "warning.main"
+                                                                : "error"
+                                                    } fontWeight="bold">
                                                         ¥{day.total.toLocaleString()}
                                                     </Typography>
                                                 </ListItem>
@@ -673,7 +731,13 @@ export default function CalendarPage() {
                                                 <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
                                                     利用金額
                                                 </Typography>
-                                                <Typography variant="h5" color="primary" gutterBottom>
+                                                <Typography variant="h5" color={
+                                                    selectedEvent.amount <= 1000
+                                                        ? "success.main"
+                                                        : selectedEvent.amount <= 3000
+                                                            ? "warning.main"
+                                                            : "error"
+                                                } gutterBottom>
                                                     ¥{selectedEvent.amount.toLocaleString()}
                                                 </Typography>
 

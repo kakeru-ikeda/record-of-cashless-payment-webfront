@@ -26,6 +26,72 @@ export class CardUsageApi {
   }
 
   /**
+   * 日付範囲に基づいてカード利用情報を取得
+   * 複数の月にまたがる場合も対応
+   * @param startDate 開始日
+   * @param endDate 終了日
+   */
+  public static async getCardUsagesByDateRange(startDate: Date, endDate: Date): Promise<CardUsage[]> {
+    try {
+      console.log('日付範囲でデータ取得:', startDate.toLocaleDateString(), '〜', endDate.toLocaleDateString());
+      
+      // 必要なすべての年月の組み合わせを計算
+      const months: { year: number, month: number }[] = [];
+      
+      // 開始日の年月を取得
+      const startYear = startDate.getFullYear();
+      const startMonth = startDate.getMonth() + 1;
+      
+      // 終了日の年月を取得
+      const endYear = endDate.getFullYear();
+      const endMonth = endDate.getMonth() + 1;
+      
+      // 同じ年の場合
+      if (startYear === endYear) {
+        // 開始月から終了月までを追加
+        for (let month = startMonth; month <= endMonth; month++) {
+          months.push({ year: startYear, month });
+        }
+      } else {
+        // 開始年の残りの月を追加
+        for (let month = startMonth; month <= 12; month++) {
+          months.push({ year: startYear, month });
+        }
+        
+        // 中間の年があれば、その年の全ての月を追加
+        for (let year = startYear + 1; year < endYear; year++) {
+          for (let month = 1; month <= 12; month++) {
+            months.push({ year, month });
+          }
+        }
+        
+        // 終了年の月を追加
+        for (let month = 1; month <= endMonth; month++) {
+          months.push({ year: endYear, month });
+        }
+      }
+      
+      console.log('取得する年月:', months.map(m => `${m.year}年${m.month}月`).join(', '));
+      
+      // 各月のデータを並行して取得
+      const promises = months.map(({ year, month }) => {
+        console.log(`${year}年${month}月のデータを取得`);
+        return this.getCardUsagesByMonth(year, month);
+      });
+      
+      const results = await Promise.all(promises);
+      const allUsages = results.flat();
+      
+      console.log(`取得したデータ: 合計 ${allUsages.length}件`);
+      
+      return allUsages;
+    } catch (error) {
+      console.error('日付範囲のカード利用情報の取得に失敗しました:', error);
+      throw error;
+    }
+  }
+
+  /**
    * IDによりカード利用情報を取得
    * @param id カード利用情報ID
    */
