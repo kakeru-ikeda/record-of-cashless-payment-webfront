@@ -153,7 +153,8 @@ export default function CalendarPage() {
         switch (view) {
             case 'month':
                 start = new Date(date.getFullYear(), date.getMonth(), 1);
-                end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                // 月末日を確実に取得するよう修正（次の月の0日 = 今月の末日）
+                end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
                 console.log('月表示の範囲計算:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
                 break;
             case 'week':
@@ -162,6 +163,8 @@ export default function CalendarPage() {
                 start.setDate(date.getDate() - dayOfWeek);
                 end = new Date(start);
                 end.setDate(start.getDate() + 6);
+                // 週の終了日の終わりまで含める
+                end.setHours(23, 59, 59, 999);
                 console.log('週表示の範囲計算:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
                 break;
             case 'day':
@@ -172,7 +175,7 @@ export default function CalendarPage() {
                 break;
             default:
                 start = new Date(date.getFullYear(), date.getMonth(), 1);
-                end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
                 console.log('デフォルトの範囲計算:', `${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
         }
 
