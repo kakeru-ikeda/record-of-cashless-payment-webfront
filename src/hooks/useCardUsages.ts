@@ -5,8 +5,15 @@ import { CardUsage, CalendarEvent } from '@/types';
 import { CardUsageApi } from '@/api/cardUsageApi';
 import { convertTimestampToDate } from '@/utils/dateUtils';
 
+// 日付範囲の型定義
+export interface DateRange {
+  start: Date;
+  end: Date;
+}
+
 // APIからカード利用情報を取得するカスタムフック
-export const useCardUsages = (year: number, month: number) => {
+// 年月指定版（後方互換性のため）
+export const useCardUsages = (yearOrDateRange: number | DateRange, month?: number) => {
     const [cardUsages, setCardUsages] = useState<CardUsage[]>([]);
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,10 +57,22 @@ export const useCardUsages = (year: number, month: number) => {
     const refreshData = useCallback(async () => {
         try {
             setLoading(true);
-            console.log(`API: データ更新 ${year}年${month}月`);
-
-            // APIからカード利用情報を再取得
-            const usages = await CardUsageApi.getCardUsagesByMonth(year, month);
+            
+            let usages: CardUsage[] = [];
+            
+            // 引数の型に応じて処理を分岐
+            if (typeof yearOrDateRange === 'number' && month !== undefined) {
+                // 年月指定の場合
+                const year = yearOrDateRange;
+                console.log(`API: データ更新 ${year}年${month}月`);
+                usages = await CardUsageApi.getCardUsagesByMonth(year, month);
+            } else if (typeof yearOrDateRange === 'object' && 'start' in yearOrDateRange && 'end' in yearOrDateRange) {
+                // 日付範囲指定の場合
+                const { start, end } = yearOrDateRange;
+                console.log(`API: データ更新 期間 ${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
+                usages = await CardUsageApi.getCardUsagesByDateRange(start, end);
+            }
+            
             console.log(`取得したカード利用情報: ${usages.length}件`);
 
             setCardUsages(usages);
@@ -69,16 +88,28 @@ export const useCardUsages = (year: number, month: number) => {
             setError(err instanceof Error ? err : new Error('データ更新中に不明なエラーが発生しました'));
             setLoading(false);
         }
-    }, [year, month]);
+    }, [yearOrDateRange, month]);
 
     useEffect(() => {
         const fetchCardUsages = async () => {
             try {
                 setLoading(true);
-                console.log(`API: データ取得 ${year}年${month}月`);
-
-                // APIからカード利用情報を取得
-                const usages = await CardUsageApi.getCardUsagesByMonth(year, month);
+                
+                let usages: CardUsage[] = [];
+                
+                // 引数の型に応じて処理を分岐
+                if (typeof yearOrDateRange === 'number' && month !== undefined) {
+                    // 年月指定の場合
+                    const year = yearOrDateRange;
+                    console.log(`API: データ取得 ${year}年${month}月`);
+                    usages = await CardUsageApi.getCardUsagesByMonth(year, month);
+                } else if (typeof yearOrDateRange === 'object' && 'start' in yearOrDateRange && 'end' in yearOrDateRange) {
+                    // 日付範囲指定の場合
+                    const { start, end } = yearOrDateRange;
+                    console.log(`API: データ取得 期間 ${start.toLocaleDateString()} 〜 ${end.toLocaleDateString()}`);
+                    usages = await CardUsageApi.getCardUsagesByDateRange(start, end);
+                }
+                
                 console.log(`取得したカード利用情報: ${usages.length}件`);
 
                 setCardUsages(usages);
@@ -97,7 +128,7 @@ export const useCardUsages = (year: number, month: number) => {
         };
 
         fetchCardUsages();
-    }, [year, month]);
+    }, [yearOrDateRange, month]);
 
     return { cardUsages, events, loading, error, refreshData };
 };
