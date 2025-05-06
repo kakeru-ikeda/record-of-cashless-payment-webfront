@@ -107,7 +107,7 @@ export default function CalendarPage() {
     const dailySummary = useMemo(() => {
         // アクティブ状態の項目のみをフィルタリング
         const activeUsages = cardUsages.filter(usage => usage.is_active !== false);
-        
+
         const summary = activeUsages.reduce((acc, usage) => {
             // 共通のconvertTimestampToDate関数を使用
             const date = convertTimestampToDate(usage.datetime_of_use);
@@ -336,13 +336,11 @@ export default function CalendarPage() {
 
         // アクティブな項目は金額に応じた色分け
         if (amount < 1000) {
-            backgroundColor = '#4caf50';
+            backgroundColor = '#4caf50'; // 緑: 1000円以内
         } else if (amount < 3000) {
-            backgroundColor = '#2196f3';
-        } else if (amount < 10000) {
-            backgroundColor = '#ff9800';
+            backgroundColor = '#ff9800'; // オレンジ: 3000円以内
         } else {
-            backgroundColor = '#f44336';
+            backgroundColor = '#f44336'; // 赤: 3000円超過
         }
 
         return {
@@ -578,7 +576,13 @@ export default function CalendarPage() {
                                                         primary={formatDate(day.date)}
                                                         secondary={`${day.count}件の利用`}
                                                     />
-                                                    <Typography variant="body1" color={day.total > 5000 ? "error" : "primary"} fontWeight="bold">
+                                                    <Typography variant="body1" color={
+                                                        day.total <= 1000
+                                                            ? "success.main" // 緑: 1000円以内
+                                                            : day.total <= 3000
+                                                                ? "warning.main" // オレンジ: 3000円以内
+                                                                : "error" // 赤: 3000円超過
+                                                    } fontWeight="bold">
                                                         ¥{day.total.toLocaleString()}
                                                     </Typography>
                                                 </ListItem>
@@ -673,7 +677,13 @@ export default function CalendarPage() {
                                                 <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
                                                     利用金額
                                                 </Typography>
-                                                <Typography variant="h5" color="primary" gutterBottom>
+                                                <Typography variant="h5" color={
+                                                    selectedEvent.amount <= 1000
+                                                        ? "success.main" // 緑: 1000円以内
+                                                        : selectedEvent.amount <= 3000
+                                                            ? "warning.main" // オレンジ: 3000円以内
+                                                            : "error" // 赤: 3000円超過
+                                                } gutterBottom>
                                                     ¥{selectedEvent.amount.toLocaleString()}
                                                 </Typography>
 
