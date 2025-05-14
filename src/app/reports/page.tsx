@@ -41,13 +41,6 @@ interface TabPanelProps {
     value: number;
 }
 
-interface CardUsage {
-    datetime_of_use: { toDate: () => Date };
-    where_to_use: string;
-    card_name: string;
-    amount: number;
-}
-
 // タブパネルコンポーネント
 function TabPanel(props: TabPanelProps) {
     const { children, value, index, ...other } = props;
