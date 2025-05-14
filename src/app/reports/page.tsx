@@ -112,60 +112,24 @@ export default function ReportsPage() {
 
     // 週ごとの集計データ
     const weeklyData = useMemo(() => {
-        // バックエンドから取得した週次レポートがある場合はそれを優先
-        if (Object.keys(weeklyReports).length > 0) {
-            return Object.entries(weeklyReports)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([term, data]) => {
-                    // startDateとendDateの変換処理
-                    const startDate = data.termStartDate ? convertTimestampToDate(data.termStartDate) : undefined;
-                    const endDate = data.termEndDate ? convertTimestampToDate(data.termEndDate) : undefined;
-
-                    return {
-                        term,
-                        termName: term.replace('term', '第') + '週',
-                        total: data.totalAmount,
-                        count: data.totalCount,
-                        startDate,
-                        endDate,
-                        hasReportSent: data.hasReportSent,
-                    };
-                });
-        }
-
-        // バックエンドからの週次レポートがない場合は、cardUsagesからフロントエンドで集計
-        const weekMap: Record<string, { total: number, count: number, items: CardUsage[] }> = {};
-
-        cardUsages.forEach(usage => {
-            // datetime_of_useをconvertTimestampToDate関数で安全に変換
-            const dateObj = convertTimestampToDate(usage.datetime_of_use);
-            const day = dateObj.getDate();
-
-            // 週番号を計算（簡易版: 日付から概算）
-            let weekTerm = 'term1';
-            if (day > 7 && day <= 14) weekTerm = 'term2';
-            else if (day > 14 && day <= 21) weekTerm = 'term3';
-            else if (day > 21 && day <= 28) weekTerm = 'term4';
-            else if (day > 28) weekTerm = 'term5';
-
-            if (!weekMap[weekTerm]) {
-                weekMap[weekTerm] = { total: 0, count: 0, items: [] };
-            }
-
-            weekMap[weekTerm].total += usage.amount;
-            weekMap[weekTerm].count += 1;
-            weekMap[weekTerm].items.push(usage);
-        });
-
-        // 週番号順にソート
-        return Object.entries(weekMap)
+        return Object.entries(weeklyReports)
             .sort(([a], [b]) => a.localeCompare(b))
-            .map(([term, data]) => ({
-                term,
-                termName: term.replace('term', '第') + '週',
-                ...data
-            }));
-    }, [cardUsages, weeklyReports]);
+            .map(([term, data]) => {
+                // startDateとendDateの変換処理
+                const startDate = data.termStartDate ? convertTimestampToDate(data.termStartDate) : undefined;
+                const endDate = data.termEndDate ? convertTimestampToDate(data.termEndDate) : undefined;
+
+                return {
+                    term,
+                    termName: term.replace('term', '第') + '週',
+                    total: data.totalAmount,
+                    count: data.totalCount,
+                    startDate,
+                    endDate,
+                    hasReportSent: data.hasReportSent,
+                };
+            });
+    }, [weeklyReports]);
 
     // カテゴリ別集計（ここでは店舗ごと）
     const categoryData = useMemo(() => {
@@ -413,7 +377,7 @@ export default function ReportsPage() {
                                                                 .map((usage, index) => {
                                                                     // convertTimestampToDateを使用して日付変換
                                                                     const usageDate = convertTimestampToDate(usage.datetime_of_use);
-                                                                    
+
                                                                     return (
                                                                         <TableRow key={index}>
                                                                             <TableCell>
