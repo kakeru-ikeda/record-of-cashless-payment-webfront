@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Box,
     Paper,
@@ -21,6 +21,10 @@ import { useCardUsages } from '@/hooks/useCardUsages';
 import { useMonthlyReport } from '@/hooks/useMonthlyReports';
 import { convertTimestampToDate, formatDate } from '@/utils/dateUtils';
 import AddCardUsageModal from '@/components/ui/AddCardUsageModal';
+import { 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+    ResponsiveContainer, PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 export default function DashboardPage() {
     const today = new Date();
@@ -67,6 +71,46 @@ export default function DashboardPage() {
 
     const loading = usagesLoading || reportLoading;
 
+    // 日付別の支出データを生成（グラフ用）
+    const dailySpendingData = useMemo(() => {
+        const dailyTotals: Record<string, number> = {};
+        
+        // 該当月の日数を取得
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        // 全ての日付に初期値を設定
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${i}日`;
+            dailyTotals[dateStr] = 0;
+        }
+        
+        // 各取引を日付ごとに集計
+        activeUsages.forEach(usage => {
+            const date = convertTimestampToDate(usage.datetime_of_use);
+            if (date.getFullYear() === year && date.getMonth() + 1 === month) {
+                const dayStr = `${date.getDate()}日`;
+                dailyTotals[dayStr] = (dailyTotals[dayStr] || 0) + usage.amount;
+            }
+        });
+        
+        // グラフ用データに変換
+        return Object.entries(dailyTotals).map(([day, amount]) => ({
+            day,
+            amount
+        })).sort((a, b) => parseInt(a.day) - parseInt(b.day));
+    }, [activeUsages, year, month]);
+
+    // 店舗カテゴリ別の円グラフデータ
+    const pieChartData = useMemo(() => {
+        return topStores.map(([store, data]) => ({
+            name: store,
+            value: data.total
+        }));
+    }, [topStores]);
+
+    // 円グラフの色
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+    
     // 追加ボタンクリックハンドラ
     const handleAddButtonClick = () => {
         setAddModalOpen(true);
@@ -264,6 +308,93 @@ export default function DashboardPage() {
                                         <Typography variant="body2" color="text.secondary" align="center">
                                             データがありません
                                         </Typography>
+                                    )}
+                                </Paper>
+                            </Grid>
+
+                            {/* 支出推移グラフ */}
+                            <Grid size={{ xs: 12, md: 8 }}>
+                                <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
+                                    <Typography variant="h6" gutterBottom>
+                                        日別支出推移
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                    
+                                    {dailySpendingData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <LineChart
+                                                data={dailySpendingData}
+                                                margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis 
+                                                    dataKey="day" 
+                                                    angle={-45} 
+                                                    textAnchor="end" 
+                                                    height={60}
+                                                    tickFormatter={(value) => value.toString().replace('日', '')}
+                                                />
+                                                <YAxis />
+                                                <RechartsTooltip 
+                                                    formatter={(value: number) => [`¥${value.toLocaleString()}`, '支出']} 
+                                                    labelFormatter={(label) => `${label}`}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="amount"
+                                                    name="支出"
+                                                    stroke="#8884d8"
+                                                    activeDot={{ r: 8 }}
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+                                            <Typography variant="body2" color="text.secondary">
+                                                データがありません
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Paper>
+                            </Grid>
+
+                            {/* 店舗別支出円グラフ */}
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
+                                    <Typography variant="h6" gutterBottom>
+                                        店舗別支出割合
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                    
+                                    {pieChartData.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <PieChart>
+                                                <Pie
+                                                    data={pieChartData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    labelLine={false}
+                                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                                    outerRadius={80}
+                                                    fill="#8884d8"
+                                                    dataKey="value"
+                                                >
+                                                    {pieChartData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Legend />
+                                                <RechartsTooltip 
+                                                    formatter={(value: number) => [`¥${value.toLocaleString()}`, '支出額']}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+                                            <Typography variant="body2" color="text.secondary">
+                                                データがありません
+                                            </Typography>
+                                        </Box>
                                     )}
                                 </Paper>
                             </Grid>
